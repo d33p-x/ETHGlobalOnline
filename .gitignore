@@ -14,7 +14,7 @@ states/
 .env
 .env.local
 
-
+contracts/node_modules/
 contracts/cache/
 contracts/out/
 contracts/lib/
