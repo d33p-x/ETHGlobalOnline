@@ -55,5 +55,6 @@ contract PEERTOPEER {
             orders[_orderId].status == OrderStatus.Open,
             "Only open orders can be closed"
         );
+        orders[_orderId].status = OrderStatus.Cancelled;
     }
 }
