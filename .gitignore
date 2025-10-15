@@ -13,3 +13,9 @@ states/
 # Optional
 .env
 .env.local
+
+
+contracts/cache/
+contracts/out/
+contracts/lib/
+contracts/broadcast/
