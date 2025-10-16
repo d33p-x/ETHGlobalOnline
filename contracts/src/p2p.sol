@@ -2,6 +2,7 @@
 pragma solidity 0.8.30;
 
 import {IPyth} from "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract P2P {
     enum OrderStatus {
@@ -41,12 +42,26 @@ contract P2P {
         bool _allowPartial
     ) public payable {
         if (_amountBuy == 0) {
-            require(priceFeed[_tokenSell] != bytes32(0), "no price feed for the token you are tring to sell");
-            require(priceFeed[_tokenBuy] != bytes32(0), "no price feed for the token you are trying to buy");
+            require(
+                priceFeed[_tokenSell] != bytes32(0),
+                "no price feed for the token you are tring to sell"
+            );
+            require(
+                priceFeed[_tokenBuy] != bytes32(0),
+                "no price feed for the token you are trying to buy"
+            );
         }
-        if (_tokenSell == address(0) {
-            require 
+        if (_tokenSell == address(0)) {
+            require(msg.value == _amountSell);
         }
+        if (_tokenSell != address(0)) {
+            IERC20(_tokenSell).transferFrom(
+                msg.sender,
+                address(this),
+                _amountSell
+            );
+        }
+
         orders[orderIdCounter] = Order(
             orderIdCounter,
             msg.sender,
@@ -61,14 +76,20 @@ contract P2P {
     }
 
     function cancelOrder(uint256 _orderId) public {
+        Order order = orders[_oderId];
         require(
-            orders[_orderId].maker == msg.sender,
+            order.maker == msg.sender,
             "you can only cancel your own orders"
         );
         require(
-            orders[_orderId].status == OrderStatus.Open,
+            order.status == OrderStatus.Open,
             "Only open orders can be closed"
         );
+
+        if(order.tokenSell == address(0)) {
+            (sent, data) = address(msg.sender).call{order[amountSell]}("");
+            require(sent, "Failed to sent ether")
+        }
         orders[_orderId].status = OrderStatus.Cancelled;
     }
 
