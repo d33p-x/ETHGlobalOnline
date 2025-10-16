@@ -121,7 +121,9 @@ contract P2P {
             _amountClose <= order.amountSell,
             "close amount bigger than remaining order size"
         );
+
         order.amountSell -= _amountClose;
+
         // remove the order from the linked list if remaining amount is 0
         if (order.amountSell == 0) {
             uint256 nextId = queueNode.nextId;
@@ -142,7 +144,7 @@ contract P2P {
             delete market.queue[_orderId];
         }
         market.totalLiquidity -= _amountClose;
-        IERC20(market.tokenSell).transfer(order.maker, _amountClose);
+        IERC20(market.tokenSell).transfer(msg.sender, _amountClose);
     }
 
     modifier marketExists(address _tokenSell, address _tokenBuy) {
