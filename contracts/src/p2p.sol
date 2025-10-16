@@ -33,7 +33,6 @@ contract P2P {
 
     IPyth public pyth;
     address public owner;
-    uint256 public orderIdCounter;
 
     constructor(address _pythAddress) {
         pyth = IPyth(_pythAddress);
@@ -64,12 +63,95 @@ contract P2P {
         address _tokenSell,
         address _tokenBuy,
         uint256 _amountSell
-    ) public {
+    ) public marketExists(_tokenSell, _tokenBuy) {
         bytes32 marketId = keccak256(abi.encodePacked(_tokenSell, _tokenBuy));
-        require(
-            markets[marketId].tokenSell == address(0),
-            "no market for this exists"
+
+        // get market pointer
+        Market storage market = markets[marketId];
+
+        // get orderid
+        uint256 orderId = market.nextOrderId;
+
+        // create new order in mapping
+        Order memory order = Order(address(msg.sender), _amountSell);
+        market.orders[orderId] = order;
+
+        // create new node in mapping
+        QueueNode memory queueNode = QueueNode({
+            nextId: 0, //0 because its the last order
+            prevId: market.tailId
+        });
+        market.queue[orderId] = queueNode;
+
+        //if there is an exsisting last order then update that orders tail to be the new order
+        if (market.tailId != 0) {
+            market.queue[market.tailId].nextId = orderId;
+        }
+        //if there are no orders yet, set the new orderId as head
+        if (market.headId == 0) {
+            market.headId = orderId;
+        }
+
+        market.tailId = orderId;
+        market.totalLiquidity += _amountSell;
+        market.nextOrderId++;
+        IERC20(market.tokenSell).transferFrom(
+            msg.sender,
+            address(this),
+            _amountSell
         );
+    }
+
+    function cancelOrReduceOrder(
+        address _tokenSell,
+        address _tokenBuy,
+        uint256 _amountClose,
+        uint256 _orderId
+    ) public marketExists(_tokenSell, _tokenBuy) {
+        bytes32 marketId = keccak256(abi.encodePacked(_tokenSell, _tokenBuy));
+        Market storage market = markets[marketId];
+        Order storage order = market.orders[_orderId];
+        QueueNode storage queueNode = market.queue[_orderId];
+        require(order.maker == address(msg.sender)); //check that msg sender is maker, also checks that order exists
+        require(
+            order.amountSell != 0,
+            "order has been filled or cancelled already"
+        );
+        require(
+            _amountClose <= order.amountSell,
+            "close amount bigger than remaining order size"
+        );
+        order.amountSell -= _amountClose;
+        // remove the order from the linked list if remaining amount is 0
+        if (order.amountSell == 0) {
+            uint256 nextId = queueNode.nextId;
+            uint256 prevId = queueNode.prevId;
+
+            if (prevId != 0) {
+                market.queue[prevId].nextId = queueNode.nextId;
+            } else {
+                market.headId = nextId;
+            }
+
+            if (nextId != 0) {
+                market.queue[nextId].prevId = prevId;
+            } else {
+                market.tailId = prevId;
+            }
+            delete market.orders[_orderId];
+            delete market.queue[_orderId];
+        }
+        market.totalLiquidity -= _amountClose;
+        IERC20(market.tokenSell).transfer(order.maker, _amountClose);
+    }
+
+    modifier marketExists(address _tokenSell, address _tokenBuy) {
+        require(
+            markets[keccak256(abi.encodePacked(_tokenSell, _tokenBuy))]
+                .tokenSell != address(0),
+            "market doesnt exist"
+        );
+        _;
     }
 
     function setPriceFeed(
