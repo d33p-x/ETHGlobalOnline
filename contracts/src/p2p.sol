@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {IPyth} from "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
+import "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
+import "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract P2P {
-    event MarketCreated(bytes32 markteId, address tokenSell, address tokenBuy);
+    event MarketCreated(bytes32 markteId, address token0, address token1);
 
     struct QueueNode {
         uint256 nextId; //0 if this is the last
@@ -14,12 +15,14 @@ contract P2P {
 
     struct Order {
         address maker;
-        uint256 amountSell;
+        uint256 amount0;
+        uint256 maxPrice;
+        uint256 minPrice;
     }
 
     struct Market {
-        address tokenSell;
-        address tokenBuy;
+        address token0; //the token on offer
+        address token1; //the token sellers want to receive
         mapping(uint256 => Order) orders; //order mapping
         mapping(uint256 => QueueNode) queue; //linked list
         uint256 headId; // first order
@@ -28,8 +31,8 @@ contract P2P {
         uint256 nextOrderId;
     }
 
-    mapping(bytes32 => Market) public markets; //mapping markets (keccak of tokenSell & tokenBuy)
-    mapping(address => bytes32) public priceFeed; //mapping address to pricefeed Id;
+    mapping(bytes32 => Market) public markets; //mapping markets (keccak of token0 & token1)
+    mapping(address => bytes32) public priceFeeds; //mapping address to pricefeed Id;
 
     IPyth public pyth;
     address public owner;
@@ -39,32 +42,34 @@ contract P2P {
         owner = msg.sender;
     }
 
-    function createMarket(address _tokenSell, address _tokenBuy) public {
+    function createMarket(address _token0, address _token1) public {
         require(
-            _tokenSell != address(0) && _tokenBuy != address(0),
+            _token0 != address(0) && _token1 != address(0),
             "Invalid token address"
         );
-        require(_tokenSell != _tokenBuy, "Tokens must be different");
-        require(priceFeed[_tokenSell] != bytes32(0));
-        require(priceFeed[_tokenBuy] != bytes32(0));
-        bytes32 marketId = keccak256(abi.encodePacked(_tokenSell, _tokenBuy));
+        require(_token0 != _token1, "Tokens must be different");
+        require(priceFeeds[_token0] != bytes32(0));
+        require(priceFeeds[_token1] != bytes32(0));
+        bytes32 marketId = keccak256(abi.encodePacked(_token0, _token1));
         require(
-            markets[marketId].tokenSell == address(0),
+            markets[marketId].token0 == address(0),
             "Market already exists"
         );
         Market storage newMarket = markets[marketId];
-        newMarket.tokenSell = _tokenSell;
-        newMarket.tokenBuy = _tokenBuy;
+        newMarket.token0 = _token0;
+        newMarket.token1 = _token1;
         newMarket.nextOrderId = 1;
-        emit MarketCreated(marketId, _tokenSell, _tokenBuy);
+        emit MarketCreated(marketId, _token0, _token1);
     }
 
     function createOrder(
-        address _tokenSell,
-        address _tokenBuy,
-        uint256 _amountSell
-    ) public marketExists(_tokenSell, _tokenBuy) {
-        bytes32 marketId = keccak256(abi.encodePacked(_tokenSell, _tokenBuy));
+        address _token0,
+        address _token1,
+        uint256 _amount0,
+        uint256 _maxPrice,
+        uint256 _minPrice
+    ) public marketExists(_token0, _token1) {
+        bytes32 marketId = keccak256(abi.encodePacked(_token0, _token1));
 
         // get market pointer
         Market storage market = markets[marketId];
@@ -73,7 +78,12 @@ contract P2P {
         uint256 orderId = market.nextOrderId;
 
         // create new order in mapping
-        Order memory order = Order(address(msg.sender), _amountSell);
+        Order memory order = Order(
+            address(msg.sender),
+            _amount0,
+            _maxPrice,
+            _minPrice
+        );
         market.orders[orderId] = order;
 
         // create new node in mapping
@@ -93,39 +103,35 @@ contract P2P {
         }
 
         market.tailId = orderId;
-        market.totalLiquidity += _amountSell;
+        market.totalLiquidity += _amount0;
         market.nextOrderId++;
-        IERC20(market.tokenSell).transferFrom(
-            msg.sender,
-            address(this),
-            _amountSell
-        );
+        IERC20(market.token0).transferFrom(msg.sender, address(this), _amount0);
     }
 
     function cancelOrReduceOrder(
-        address _tokenSell,
-        address _tokenBuy,
-        uint256 _amountClose,
+        address _token0,
+        address _token1,
+        uint256 _amount0Close,
         uint256 _orderId
-    ) public marketExists(_tokenSell, _tokenBuy) {
-        bytes32 marketId = keccak256(abi.encodePacked(_tokenSell, _tokenBuy));
+    ) public marketExists(_token0, _token1) {
+        bytes32 marketId = keccak256(abi.encodePacked(_token0, _token1));
         Market storage market = markets[marketId];
         Order storage order = market.orders[_orderId];
         QueueNode storage queueNode = market.queue[_orderId];
         require(order.maker == address(msg.sender)); //check that msg sender is maker, also checks that order exists
         require(
-            order.amountSell != 0,
+            order.amount0 != 0,
             "order has been filled or cancelled already"
         );
         require(
-            _amountClose <= order.amountSell,
+            _amount0Close <= order.amount0,
             "close amount bigger than remaining order size"
         );
 
-        order.amountSell -= _amountClose;
+        order.amount0 -= _amount0Close;
 
         // remove the order from the linked list if remaining amount is 0
-        if (order.amountSell == 0) {
+        if (order.amount0 == 0) {
             uint256 nextId = queueNode.nextId;
             uint256 prevId = queueNode.prevId;
 
@@ -143,14 +149,102 @@ contract P2P {
             delete market.orders[_orderId];
             delete market.queue[_orderId];
         }
-        market.totalLiquidity -= _amountClose;
-        IERC20(market.tokenSell).transfer(msg.sender, _amountClose);
+        market.totalLiquidity -= _amount0Close;
+        IERC20(market.token0).transfer(msg.sender, _amount0Close);
     }
 
-    modifier marketExists(address _tokenSell, address _tokenBuy) {
+    function fillOrder(
+        bytes[] calldata priceUpdate,
+        address _token0,
+        address _token1,
+        uint256 _amount1
+    ) public marketExists(_token0, _token1) {
+        bytes32 marketId = keccak256(abi.encodePacked(_token0, _token1));
+        uint fee = pyth.getUpdateFee(priceUpdate);
+        pyth.updatePriceFeeds{value: fee}(priceUpdate);
+        bytes32 priceFeed0 = priceFeeds[_token0];
+        bytes32 priceFeed1 = priceFeeds[_token1];
+        PythStructs.Price memory priceObject0 = pyth.getPriceNoOlderThan(
+            priceFeed0,
+            60
+        );
+        PythStructs.Price memory priceObject1 = pyth.getPriceNoOlderThan(
+            priceFeed1,
+            60
+        );
+        // convert int64 to uint256 (think about changing this later)
+        require(priceObject0.price >= 0);
+        require(priceObject1.price >= 0);
+        uint256 absExpo0 = uint256(uint32(-priceObject0.expo));
+        uint256 absExpo1 = uint256(uint32(-priceObject1.expo));
+
+        uint256 price0 = uint256(uint64(priceObject0.price) * 1e18);
+        uint256 price1 = uint256(uint64(priceObject1.price) * 1e18);
+
+        uint256 rate = price0 / price1;
+        uint256 amount0 = _amount1 * rate; //amount0 value of input _amount1
         require(
-            markets[keccak256(abi.encodePacked(_tokenSell, _tokenBuy))]
-                .tokenSell != address(0),
+            amount0 <= markets[marketId].totalLiquidity,
+            "theres not enought liqudity to fill your trade"
+        );
+        Market storage market = markets[marketId];
+
+        uint256 orderId = 0;
+        uint256 amount1remaining = _amount1;
+        uint256 amount1order;
+        uint256 amount0filledLoop;
+        uint256 amount0filledTotal;
+        address orderMaker;
+        Order storage order;
+        while (amount1remaining > 0) {
+            // if first loop then pick headId as order
+            if (orderId == 0) {
+                order = market.orders[market.headId];
+                orderId = market.headId;
+            } else {
+                order = market.orders[market.queue[orderId].nextId];
+            }
+            // skip order if outside price range
+            if (price0 > order.maxPrice || price0 < order.minPrice) {
+                continue;
+            }
+            // how much of amount1 is available in this order
+            amount1order = (order.amount0 * rate);
+            if (amount1order >= amount1remaining) {
+                amount0filledLoop = amount1remaining / rate;
+                amount0filledTotal += amount0filledLoop;
+                order.amount0 -= amount0filledLoop;
+            } else {
+                amount0filledLoop = amount1order / rate;
+                amount0filledTotal += amount0filledLoop;
+                order.amount0 = 0;
+            }
+            orderMaker = order.maker;
+            // if no amount0 remaining in order then reorganize linked list and delete order
+            if (order.amount0 == 0) {
+                market.queue[market.queue[orderId].prevId].nextId = market
+                    .queue[orderId]
+                    .nextId;
+                market.queue[market.queue[orderId].nextId].prevId = market
+                    .queue[orderId]
+                    .prevId;
+                delete market.orders[orderId];
+                delete market.queue[orderId];
+            }
+
+            IERC20(_token1).transferFrom(
+                msg.sender,
+                orderMaker,
+                (amount0filledLoop / rate)
+            );
+        }
+        IERC20(_token0).transfer(msg.sender, amount0filledTotal);
+    }
+
+    modifier marketExists(address _token0, address _token1) {
+        require(
+            markets[keccak256(abi.encodePacked(_token0, _token1))].token0 !=
+                address(0),
             "market doesnt exist"
         );
         _;
@@ -161,6 +255,6 @@ contract P2P {
         bytes32 _priceFeedId
     ) external {
         require(msg.sender == owner, "Only owner can set price feeds");
-        priceFeed[_tokenAddress] = _priceFeedId;
+        priceFeeds[_tokenAddress] = _priceFeedId;
     }
 }

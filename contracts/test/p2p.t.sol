@@ -35,9 +35,16 @@ contract MockERC20 {
         return true;
     }
 
-    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
+    function transferFrom(
+        address from,
+        address to,
+        uint256 amount
+    ) external returns (bool) {
         require(balanceOf[from] >= amount, "Insufficient balance");
-        require(allowance[from][msg.sender] >= amount, "Insufficient allowance");
+        require(
+            allowance[from][msg.sender] >= amount,
+            "Insufficient allowance"
+        );
         balanceOf[from] -= amount;
         balanceOf[to] += amount;
         allowance[from][msg.sender] -= amount;
@@ -97,15 +104,26 @@ contract PEERTOPEERTEST is Test {
     function test_createMarket() public {
         p2p.createMarket(address(usdc), address(pepe));
 
-        bytes32 marketId = keccak256(abi.encodePacked(address(usdc), address(pepe)));
-        (address tokenSell, address tokenBuy, uint256 headId, uint256 tailId, uint256 totalLiquidity, uint256 nextOrderId) = p2p.markets(marketId);
+        bytes32 marketId = keccak256(
+            abi.encodePacked(address(usdc), address(pepe))
+        );
+        (
+            address tokenSell,
+            address tokenBuy,
+            uint256 headId,
+            uint256 tailId,
+            uint256 totalLiquidity,
+            uint256 nextOrderId
+        ) = p2p.markets(marketId);
 
         assertEq(tokenSell, address(usdc));
         assertEq(tokenBuy, address(pepe));
     }
 
     function test_createMarket_EmitsEvent() public {
-        bytes32 expectedMarketId = keccak256(abi.encodePacked(address(usdc), address(pepe)));
+        bytes32 expectedMarketId = keccak256(
+            abi.encodePacked(address(usdc), address(pepe))
+        );
 
         vm.expectEmit(true, true, true, true);
         emit P2P.MarketCreated(expectedMarketId, address(usdc), address(pepe));
@@ -145,8 +163,17 @@ contract PEERTOPEERTEST is Test {
         vm.stopPrank();
 
         // Verify order was created
-        bytes32 marketId = keccak256(abi.encodePacked(address(usdc), address(pepe)));
-        (,, uint256 headId, uint256 tailId, uint256 totalLiquidity, uint256 nextOrderId) = p2p.markets(marketId);
+        bytes32 marketId = keccak256(
+            abi.encodePacked(address(usdc), address(pepe))
+        );
+        (
+            ,
+            ,
+            uint256 headId,
+            uint256 tailId,
+            uint256 totalLiquidity,
+            uint256 nextOrderId
+        ) = p2p.markets(marketId);
 
         assertEq(headId, 1);
         assertEq(tailId, 1);
@@ -176,8 +203,17 @@ contract PEERTOPEERTEST is Test {
         p2p.createOrder(address(usdc), address(pepe), 500e18);
         vm.stopPrank();
 
-        bytes32 marketId = keccak256(abi.encodePacked(address(usdc), address(pepe)));
-        (,, uint256 headId, uint256 tailId, uint256 totalLiquidity, uint256 nextOrderId) = p2p.markets(marketId);
+        bytes32 marketId = keccak256(
+            abi.encodePacked(address(usdc), address(pepe))
+        );
+        (
+            ,
+            ,
+            uint256 headId,
+            uint256 tailId,
+            uint256 totalLiquidity,
+            uint256 nextOrderId
+        ) = p2p.markets(marketId);
 
         assertEq(headId, 1);
         assertEq(tailId, 3);
@@ -211,8 +247,17 @@ contract PEERTOPEERTEST is Test {
         vm.stopPrank();
 
         // Verify order was cancelled
-        bytes32 marketId = keccak256(abi.encodePacked(address(usdc), address(pepe)));
-        (,, uint256 headId, uint256 tailId, uint256 totalLiquidity, uint256 nextOrderId) = p2p.markets(marketId);
+        bytes32 marketId = keccak256(
+            abi.encodePacked(address(usdc), address(pepe))
+        );
+        (
+            ,
+            ,
+            uint256 headId,
+            uint256 tailId,
+            uint256 totalLiquidity,
+            uint256 nextOrderId
+        ) = p2p.markets(marketId);
 
         assertEq(headId, 0);
         assertEq(tailId, 0);
@@ -234,8 +279,17 @@ contract PEERTOPEERTEST is Test {
         vm.stopPrank();
 
         // Verify order was reduced
-        bytes32 marketId = keccak256(abi.encodePacked(address(usdc), address(pepe)));
-        (,, uint256 headId, uint256 tailId, uint256 totalLiquidity, uint256 nextOrderId) = p2p.markets(marketId);
+        bytes32 marketId = keccak256(
+            abi.encodePacked(address(usdc), address(pepe))
+        );
+        (
+            ,
+            ,
+            uint256 headId,
+            uint256 tailId,
+            uint256 totalLiquidity,
+            uint256 nextOrderId
+        ) = p2p.markets(marketId);
 
         assertEq(headId, 1); // Order still exists
         assertEq(tailId, 1);
@@ -266,8 +320,17 @@ contract PEERTOPEERTEST is Test {
         vm.prank(user2);
         p2p.cancelOrReduceOrder(address(usdc), address(pepe), 2000e18, 2);
 
-        bytes32 marketId = keccak256(abi.encodePacked(address(usdc), address(pepe)));
-        (,, uint256 headId, uint256 tailId, uint256 totalLiquidity, uint256 nextOrderId) = p2p.markets(marketId);
+        bytes32 marketId = keccak256(
+            abi.encodePacked(address(usdc), address(pepe))
+        );
+        (
+            ,
+            ,
+            uint256 headId,
+            uint256 tailId,
+            uint256 totalLiquidity,
+            uint256 nextOrderId
+        ) = p2p.markets(marketId);
 
         assertEq(headId, 1); // Still order 1
         assertEq(tailId, 3); // Still order 3
@@ -292,8 +355,17 @@ contract PEERTOPEERTEST is Test {
         vm.prank(user1);
         p2p.cancelOrReduceOrder(address(usdc), address(pepe), 1000e18, 1);
 
-        bytes32 marketId = keccak256(abi.encodePacked(address(usdc), address(pepe)));
-        (,, uint256 headId, uint256 tailId, uint256 totalLiquidity, uint256 nextOrderId) = p2p.markets(marketId);
+        bytes32 marketId = keccak256(
+            abi.encodePacked(address(usdc), address(pepe))
+        );
+        (
+            ,
+            ,
+            uint256 headId,
+            uint256 tailId,
+            uint256 totalLiquidity,
+            uint256 nextOrderId
+        ) = p2p.markets(marketId);
 
         assertEq(headId, 2); // Now order 2 is head
         assertEq(tailId, 2);
@@ -318,8 +390,17 @@ contract PEERTOPEERTEST is Test {
         vm.prank(user2);
         p2p.cancelOrReduceOrder(address(usdc), address(pepe), 2000e18, 2);
 
-        bytes32 marketId = keccak256(abi.encodePacked(address(usdc), address(pepe)));
-        (,, uint256 headId, uint256 tailId, uint256 totalLiquidity, uint256 nextOrderId) = p2p.markets(marketId);
+        bytes32 marketId = keccak256(
+            abi.encodePacked(address(usdc), address(pepe))
+        );
+        (
+            ,
+            ,
+            uint256 headId,
+            uint256 tailId,
+            uint256 totalLiquidity,
+            uint256 nextOrderId
+        ) = p2p.markets(marketId);
 
         assertEq(headId, 1);
         assertEq(tailId, 1); // Now order 1 is tail
@@ -411,8 +492,17 @@ contract PEERTOPEERTEST is Test {
         p2p.createOrder(address(weth), address(usdc), 3e18);
         vm.stopPrank();
 
-        bytes32 marketId = keccak256(abi.encodePacked(address(weth), address(usdc)));
-        (,, uint256 headId1, uint256 tailId, uint256 totalLiquidity, uint256 nextOrderId) = p2p.markets(marketId);
+        bytes32 marketId = keccak256(
+            abi.encodePacked(address(weth), address(usdc))
+        );
+        (
+            ,
+            ,
+            uint256 headId1,
+            uint256 tailId,
+            uint256 totalLiquidity,
+            uint256 nextOrderId
+        ) = p2p.markets(marketId);
 
         assertEq(totalLiquidity, 18e18);
         assertEq(tailId, 3);
@@ -421,14 +511,23 @@ contract PEERTOPEERTEST is Test {
         vm.prank(user2);
         p2p.cancelOrReduceOrder(address(weth), address(usdc), 2e18, 2);
 
-        (,, headId1, tailId, totalLiquidity, nextOrderId) = p2p.markets(marketId);
+        (, , headId1, tailId, totalLiquidity, nextOrderId) = p2p.markets(
+            marketId
+        );
         assertEq(totalLiquidity, 16e18);
 
         // User1 cancels their order completely
         vm.prank(user1);
         p2p.cancelOrReduceOrder(address(weth), address(usdc), 10e18, 1);
 
-        (,, uint256 headId, uint256 tailId2, uint256 totalLiquidity2, uint256 nextOrderId2) = p2p.markets(marketId);
+        (
+            ,
+            ,
+            uint256 headId,
+            uint256 tailId2,
+            uint256 totalLiquidity2,
+            uint256 nextOrderId2
+        ) = p2p.markets(marketId);
         assertEq(totalLiquidity2, 6e18);
         assertEq(headId, 2); // Order 2 is now head
     }
