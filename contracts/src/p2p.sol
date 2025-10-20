@@ -4,8 +4,9 @@ pragma solidity 0.8.30;
 import "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
 import "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract P2P {
+contract P2P is ReentrancyGuard {
     event MarketCreated(bytes32 markteId, address token0, address token1);
 
     struct QueueNode {
@@ -153,12 +154,12 @@ contract P2P {
         IERC20(market.token0).transfer(msg.sender, _amount0Close);
     }
 
-    function fillOrder(
+    function fillOrderExactAmountIn(
         bytes[] calldata priceUpdate,
         address _token0,
         address _token1,
         uint256 _amount1
-    ) public marketExists(_token0, _token1) {
+    ) public marketExists(_token0, _token1) nonReentrant {
         bytes32 marketId = keccak256(abi.encodePacked(_token0, _token1));
         uint fee = pyth.getUpdateFee(priceUpdate);
         pyth.updatePriceFeeds{value: fee}(priceUpdate);
@@ -175,70 +176,91 @@ contract P2P {
         // convert int64 to uint256 (think about changing this later)
         require(priceObject0.price >= 0);
         require(priceObject1.price >= 0);
+        //  absolute exponents for uint256
         uint256 absExpo0 = uint256(uint32(-priceObject0.expo));
         uint256 absExpo1 = uint256(uint32(-priceObject1.expo));
+        // normalize price because of possible different exponents
+        uint256 price0 = uint256(uint64(priceObject0.price) * 1e18) /
+            (10 ** absExpo0);
+        uint256 price1 = uint256(uint64(priceObject1.price) * 1e18) /
+            (10 ** absExpo1);
 
-        uint256 price0 = uint256(uint64(priceObject0.price) * 1e18);
-        uint256 price1 = uint256(uint64(priceObject1.price) * 1e18);
-
-        uint256 rate = price0 / price1;
-        uint256 amount0 = _amount1 * rate; //amount0 value of input _amount1
-        require(
-            amount0 <= markets[marketId].totalLiquidity,
-            "theres not enought liqudity to fill your trade"
-        );
         Market storage market = markets[marketId];
+        uint256 amount0Target = (_amount1 * price1) / price0;
 
-        uint256 orderId = 0;
-        uint256 amount1remaining = _amount1;
-        uint256 amount1order;
-        uint256 amount0filledLoop;
-        uint256 amount0filledTotal;
-        address orderMaker;
-        Order storage order;
-        while (amount1remaining > 0) {
-            // if first loop then pick headId as order
-            if (orderId == 0) {
-                order = market.orders[market.headId];
-                orderId = market.headId;
-            } else {
-                order = market.orders[market.queue[orderId].nextId];
-            }
-            // skip order if outside price range
-            if (price0 > order.maxPrice || price0 < order.minPrice) {
+        require(amount0Target > 0);
+        require(amount0Target <= market.totalLiquidity);
+
+        uint256 amount0FilledTotal = 0;
+        uint256 amount1SpentTotal = 0;
+        uint256 currentOrderId = market.headId;
+
+        while (amount0FilledTotal < amount0Target && currentOrderId != 0) {
+            Order storage order = market.orders[currentOrderId];
+            QueueNode storage queueNode = market.queue[currentOrderId];
+
+            uint256 nextOrderId = queueNode.nextId;
+
+            if (
+                (order.maxPrice != 0 && price0 > order.maxPrice) ||
+                (order.minPrice != 0 && price0 < order.minPrice)
+            ) {
+                currentOrderId = nextOrderId;
                 continue;
             }
-            // how much of amount1 is available in this order
-            amount1order = (order.amount0 * rate);
-            if (amount1order >= amount1remaining) {
-                amount0filledLoop = amount1remaining / rate;
-                amount0filledTotal += amount0filledLoop;
-                order.amount0 -= amount0filledLoop;
+
+            uint256 amount0RemainingToFill = amount0Target - amount0FilledTotal;
+            uint256 amount0ToFillLoop;
+
+            if (order.amount0 >= amount0RemainingToFill) {
+                amount0ToFillLoop = amount0RemainingToFill;
             } else {
-                amount0filledLoop = amount1order / rate;
-                amount0filledTotal += amount0filledLoop;
-                order.amount0 = 0;
-            }
-            orderMaker = order.maker;
-            // if no amount0 remaining in order then reorganize linked list and delete order
-            if (order.amount0 == 0) {
-                market.queue[market.queue[orderId].prevId].nextId = market
-                    .queue[orderId]
-                    .nextId;
-                market.queue[market.queue[orderId].nextId].prevId = market
-                    .queue[orderId]
-                    .prevId;
-                delete market.orders[orderId];
-                delete market.queue[orderId];
+                amount0ToFillLoop = order.amount0;
             }
 
+            uint256 amount1CostLoop = (amount0ToFillLoop * price0) / price1;
+
+            order.amount0 -= amount0ToFillLoop;
+            amount0FilledTotal += amount0ToFillLoop;
+            amount1SpentTotal += amount1CostLoop;
+
+            address orderMaker = order.maker;
+
+            if (order.amount0 == 0) {
+                uint256 nextId = queueNode.nextId;
+                uint256 prevId = queueNode.prevId;
+
+                if (prevId != 0) {
+                    market.queue[prevId].nextId = nextId;
+                } else {
+                    market.headId = nextId;
+                }
+
+                if (nextId != 0) {
+                    market.queue[nextId].prevId = prevId;
+                } else {
+                    market.tailId = prevId;
+                }
+
+                delete market.orders[currentOrderId];
+                delete market.queue[currentOrderId];
+            }
             IERC20(_token1).transferFrom(
                 msg.sender,
                 orderMaker,
-                (amount0filledLoop / rate)
+                amount1CostLoop
             );
+
+            // Move to the next order in the queue
+            currentOrderId = nextOrderId;
         }
-        IERC20(_token0).transfer(msg.sender, amount0filledTotal);
+        market.totalLiquidity -= amount0FilledTotal;
+        IERC20(_token0).transfer(msg.sender, amount0FilledTotal);
+
+        if (_amount1 > amount1SpentTotal) {
+            uint256 refund = _amount1 - amount1SpentTotal;
+            IERC20(_token1).transfer(msg.sender, refund);
+        }
     }
 
     modifier marketExists(address _token0, address _token1) {

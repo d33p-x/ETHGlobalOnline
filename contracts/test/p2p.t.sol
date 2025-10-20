@@ -159,7 +159,7 @@ contract PEERTOPEERTEST is Test {
         // User1 creates order
         vm.startPrank(user1);
         usdc.approve(address(p2p), 1000e18);
-        p2p.createOrder(address(usdc), address(pepe), 1000e18);
+        p2p.createOrder(address(usdc), address(pepe), 1000e18, 0, 0);
         vm.stopPrank();
 
         // Verify order was created
@@ -188,19 +188,19 @@ contract PEERTOPEERTEST is Test {
         // User1 creates first order
         vm.startPrank(user1);
         usdc.approve(address(p2p), 1000e18);
-        p2p.createOrder(address(usdc), address(pepe), 1000e18);
+        p2p.createOrder(address(usdc), address(pepe), 1000e18, 0, 0);
         vm.stopPrank();
 
         // User2 creates second order
         vm.startPrank(user2);
         usdc.approve(address(p2p), 2000e18);
-        p2p.createOrder(address(usdc), address(pepe), 2000e18);
+        p2p.createOrder(address(usdc), address(pepe), 2000e18, 0, 0);
         vm.stopPrank();
 
         // User3 creates third order
         vm.startPrank(user3);
         usdc.approve(address(p2p), 500e18);
-        p2p.createOrder(address(usdc), address(pepe), 500e18);
+        p2p.createOrder(address(usdc), address(pepe), 500e18, 0, 0);
         vm.stopPrank();
 
         bytes32 marketId = keccak256(
@@ -227,7 +227,7 @@ contract PEERTOPEERTEST is Test {
         usdc.approve(address(p2p), 1000e18);
 
         vm.expectRevert("market doesnt exist");
-        p2p.createOrder(address(usdc), address(pepe), 1000e18);
+        p2p.createOrder(address(usdc), address(pepe), 1000e18, 0, 0);
         vm.stopPrank();
     }
 
@@ -238,7 +238,7 @@ contract PEERTOPEERTEST is Test {
         p2p.createMarket(address(usdc), address(pepe));
         vm.startPrank(user1);
         usdc.approve(address(p2p), 1000e18);
-        p2p.createOrder(address(usdc), address(pepe), 1000e18);
+        p2p.createOrder(address(usdc), address(pepe), 1000e18, 0, 0);
 
         uint256 balanceBefore = usdc.balanceOf(user1);
 
@@ -270,7 +270,7 @@ contract PEERTOPEERTEST is Test {
         p2p.createMarket(address(usdc), address(pepe));
         vm.startPrank(user1);
         usdc.approve(address(p2p), 1000e18);
-        p2p.createOrder(address(usdc), address(pepe), 1000e18);
+        p2p.createOrder(address(usdc), address(pepe), 1000e18, 0, 0);
 
         uint256 balanceBefore = usdc.balanceOf(user1);
 
@@ -303,17 +303,17 @@ contract PEERTOPEERTEST is Test {
         // Create three orders
         vm.startPrank(user1);
         usdc.approve(address(p2p), 1000e18);
-        p2p.createOrder(address(usdc), address(pepe), 1000e18);
+        p2p.createOrder(address(usdc), address(pepe), 1000e18, 0, 0);
         vm.stopPrank();
 
         vm.startPrank(user2);
         usdc.approve(address(p2p), 2000e18);
-        p2p.createOrder(address(usdc), address(pepe), 2000e18);
+        p2p.createOrder(address(usdc), address(pepe), 2000e18, 0, 0);
         vm.stopPrank();
 
         vm.startPrank(user3);
         usdc.approve(address(p2p), 500e18);
-        p2p.createOrder(address(usdc), address(pepe), 500e18);
+        p2p.createOrder(address(usdc), address(pepe), 500e18, 0, 0);
         vm.stopPrank();
 
         // Cancel middle order (user2's order - orderId 2)
@@ -343,12 +343,12 @@ contract PEERTOPEERTEST is Test {
         // Create two orders
         vm.startPrank(user1);
         usdc.approve(address(p2p), 1000e18);
-        p2p.createOrder(address(usdc), address(pepe), 1000e18);
+        p2p.createOrder(address(usdc), address(pepe), 1000e18, 0, 0);
         vm.stopPrank();
 
         vm.startPrank(user2);
         usdc.approve(address(p2p), 2000e18);
-        p2p.createOrder(address(usdc), address(pepe), 2000e18);
+        p2p.createOrder(address(usdc), address(pepe), 2000e18, 0, 0);
         vm.stopPrank();
 
         // Cancel head order
@@ -378,12 +378,12 @@ contract PEERTOPEERTEST is Test {
         // Create two orders
         vm.startPrank(user1);
         usdc.approve(address(p2p), 1000e18);
-        p2p.createOrder(address(usdc), address(pepe), 1000e18);
+        p2p.createOrder(address(usdc), address(pepe), 1000e18, 0, 0);
         vm.stopPrank();
 
         vm.startPrank(user2);
         usdc.approve(address(p2p), 2000e18);
-        p2p.createOrder(address(usdc), address(pepe), 2000e18);
+        p2p.createOrder(address(usdc), address(pepe), 2000e18, 0, 0);
         vm.stopPrank();
 
         // Cancel tail order
@@ -412,7 +412,7 @@ contract PEERTOPEERTEST is Test {
 
         vm.startPrank(user1);
         usdc.approve(address(p2p), 1000e18);
-        p2p.createOrder(address(usdc), address(pepe), 1000e18);
+        p2p.createOrder(address(usdc), address(pepe), 1000e18, 0, 0);
         vm.stopPrank();
 
         // User2 tries to cancel user1's order
@@ -426,7 +426,7 @@ contract PEERTOPEERTEST is Test {
 
         vm.startPrank(user1);
         usdc.approve(address(p2p), 1000e18);
-        p2p.createOrder(address(usdc), address(pepe), 1000e18);
+        p2p.createOrder(address(usdc), address(pepe), 1000e18, 0, 0);
 
         vm.expectRevert("close amount bigger than remaining order size");
         p2p.cancelOrReduceOrder(address(usdc), address(pepe), 1001e18, 1);
@@ -438,7 +438,7 @@ contract PEERTOPEERTEST is Test {
 
         vm.startPrank(user1);
         usdc.approve(address(p2p), 1000e18);
-        p2p.createOrder(address(usdc), address(pepe), 1000e18);
+        p2p.createOrder(address(usdc), address(pepe), 1000e18, 0, 0);
 
         // Cancel once
         p2p.cancelOrReduceOrder(address(usdc), address(pepe), 1000e18, 1);
@@ -457,7 +457,7 @@ contract PEERTOPEERTEST is Test {
 
         p2p.setPriceFeed(address(newToken), newFeed);
 
-        assertEq(p2p.priceFeed(address(newToken)), newFeed);
+        assertEq(p2p.priceFeeds(address(newToken)), newFeed);
     }
 
     function test_setPriceFeed_RevertsIfNotOwner() public {
@@ -477,19 +477,19 @@ contract PEERTOPEERTEST is Test {
         // User1 creates order
         vm.startPrank(user1);
         weth.approve(address(p2p), 10e18);
-        p2p.createOrder(address(weth), address(usdc), 10e18);
+        p2p.createOrder(address(weth), address(usdc), 10e18, 0, 0);
         vm.stopPrank();
 
         // User2 creates order
         vm.startPrank(user2);
         weth.approve(address(p2p), 5e18);
-        p2p.createOrder(address(weth), address(usdc), 5e18);
+        p2p.createOrder(address(weth), address(usdc), 5e18, 0, 0);
         vm.stopPrank();
 
         // User3 creates order
         vm.startPrank(user3);
         weth.approve(address(p2p), 3e18);
-        p2p.createOrder(address(weth), address(usdc), 3e18);
+        p2p.createOrder(address(weth), address(usdc), 3e18, 0, 0);
         vm.stopPrank();
 
         bytes32 marketId = keccak256(
@@ -530,5 +530,369 @@ contract PEERTOPEERTEST is Test {
         ) = p2p.markets(marketId);
         assertEq(totalLiquidity2, 6e18);
         assertEq(headId, 2); // Order 2 is now head
+    }
+
+    // ===== Fill Order Tests =====
+    // Note: These tests would require mocking Pyth oracle responses
+    // For now, we'll create comprehensive tests for order creation with price limits
+
+    // ===== Price Limit Tests =====
+
+    function test_createOrder_WithMaxPrice() public {
+        p2p.createMarket(address(usdc), address(pepe));
+
+        vm.startPrank(user1);
+        usdc.approve(address(p2p), 1000e18);
+        // Create order with max price of 2000e18
+        p2p.createOrder(address(usdc), address(pepe), 1000e18, 2000e18, 0);
+        vm.stopPrank();
+
+        bytes32 marketId = keccak256(
+            abi.encodePacked(address(usdc), address(pepe))
+        );
+        (, , uint256 headId, uint256 tailId, uint256 totalLiquidity, ) = p2p
+            .markets(marketId);
+
+        assertEq(headId, 1);
+        assertEq(tailId, 1);
+        assertEq(totalLiquidity, 1000e18);
+    }
+
+    function test_createOrder_WithMinPrice() public {
+        p2p.createMarket(address(usdc), address(pepe));
+
+        vm.startPrank(user1);
+        usdc.approve(address(p2p), 1000e18);
+        // Create order with min price of 500e18
+        p2p.createOrder(address(usdc), address(pepe), 1000e18, 0, 500e18);
+        vm.stopPrank();
+
+        bytes32 marketId = keccak256(
+            abi.encodePacked(address(usdc), address(pepe))
+        );
+        (, , uint256 headId, uint256 tailId, uint256 totalLiquidity, ) = p2p
+            .markets(marketId);
+
+        assertEq(headId, 1);
+        assertEq(tailId, 1);
+        assertEq(totalLiquidity, 1000e18);
+    }
+
+    function test_createOrder_WithBothPriceLimits() public {
+        p2p.createMarket(address(usdc), address(pepe));
+
+        vm.startPrank(user1);
+        usdc.approve(address(p2p), 1000e18);
+        // Create order with price range: min 500e18, max 2000e18
+        p2p.createOrder(
+            address(usdc),
+            address(pepe),
+            1000e18,
+            2000e18,
+            500e18
+        );
+        vm.stopPrank();
+
+        bytes32 marketId = keccak256(
+            abi.encodePacked(address(usdc), address(pepe))
+        );
+        (, , uint256 headId, uint256 tailId, uint256 totalLiquidity, ) = p2p
+            .markets(marketId);
+
+        assertEq(headId, 1);
+        assertEq(tailId, 1);
+        assertEq(totalLiquidity, 1000e18);
+    }
+
+    function test_createOrder_MultipleOrdersWithDifferentPriceLimits() public {
+        p2p.createMarket(address(weth), address(usdc));
+
+        // User1 creates order with no price limits
+        vm.startPrank(user1);
+        weth.approve(address(p2p), 10e18);
+        p2p.createOrder(address(weth), address(usdc), 10e18, 0, 0);
+        vm.stopPrank();
+
+        // User2 creates order with max price
+        vm.startPrank(user2);
+        weth.approve(address(p2p), 5e18);
+        p2p.createOrder(address(weth), address(usdc), 5e18, 3000e18, 0);
+        vm.stopPrank();
+
+        // User3 creates order with both limits
+        vm.startPrank(user3);
+        weth.approve(address(p2p), 3e18);
+        p2p.createOrder(address(weth), address(usdc), 3e18, 4000e18, 2000e18);
+        vm.stopPrank();
+
+        bytes32 marketId = keccak256(
+            abi.encodePacked(address(weth), address(usdc))
+        );
+        (
+            ,
+            ,
+            uint256 headId,
+            uint256 tailId,
+            uint256 totalLiquidity,
+            uint256 nextOrderId
+        ) = p2p.markets(marketId);
+
+        assertEq(headId, 1);
+        assertEq(tailId, 3);
+        assertEq(totalLiquidity, 18e18);
+        assertEq(nextOrderId, 4);
+    }
+
+    // ===== Edge Case Tests =====
+
+    function test_createOrder_VerySmallAmount() public {
+        p2p.createMarket(address(usdc), address(pepe));
+
+        vm.startPrank(user1);
+        usdc.approve(address(p2p), 1);
+        p2p.createOrder(address(usdc), address(pepe), 1, 0, 0);
+        vm.stopPrank();
+
+        bytes32 marketId = keccak256(
+            abi.encodePacked(address(usdc), address(pepe))
+        );
+        (, , , , uint256 totalLiquidity, ) = p2p.markets(marketId);
+
+        assertEq(totalLiquidity, 1);
+        assertEq(usdc.balanceOf(address(p2p)), 1);
+    }
+
+    function test_createOrder_VeryLargeAmount() public {
+        p2p.createMarket(address(usdc), address(pepe));
+
+        uint256 largeAmount = 1000000000e18; // 1 billion tokens
+        usdc.mint(user1, largeAmount);
+
+        vm.startPrank(user1);
+        usdc.approve(address(p2p), largeAmount);
+        p2p.createOrder(address(usdc), address(pepe), largeAmount, 0, 0);
+        vm.stopPrank();
+
+        bytes32 marketId = keccak256(
+            abi.encodePacked(address(usdc), address(pepe))
+        );
+        (, , , , uint256 totalLiquidity, ) = p2p.markets(marketId);
+
+        assertEq(totalLiquidity, largeAmount);
+        assertEq(usdc.balanceOf(address(p2p)), largeAmount);
+    }
+
+    function test_reduceOrder_ToExactlyZero() public {
+        p2p.createMarket(address(usdc), address(pepe));
+
+        vm.startPrank(user1);
+        usdc.approve(address(p2p), 1000e18);
+        p2p.createOrder(address(usdc), address(pepe), 1000e18, 0, 0);
+
+        // Reduce to exactly zero
+        p2p.cancelOrReduceOrder(address(usdc), address(pepe), 1000e18, 1);
+        vm.stopPrank();
+
+        bytes32 marketId = keccak256(
+            abi.encodePacked(address(usdc), address(pepe))
+        );
+        (, , uint256 headId, uint256 tailId, uint256 totalLiquidity, ) = p2p
+            .markets(marketId);
+
+        assertEq(headId, 0);
+        assertEq(tailId, 0);
+        assertEq(totalLiquidity, 0);
+    }
+
+    function test_reduceOrder_MultiplePartialReductions() public {
+        p2p.createMarket(address(usdc), address(pepe));
+
+        vm.startPrank(user1);
+        usdc.approve(address(p2p), 1000e18);
+        p2p.createOrder(address(usdc), address(pepe), 1000e18, 0, 0);
+
+        uint256 initialBalance = usdc.balanceOf(user1);
+
+        // First reduction
+        p2p.cancelOrReduceOrder(address(usdc), address(pepe), 200e18, 1);
+        assertEq(usdc.balanceOf(user1), initialBalance + 200e18);
+
+        // Second reduction
+        p2p.cancelOrReduceOrder(address(usdc), address(pepe), 300e18, 1);
+        assertEq(usdc.balanceOf(user1), initialBalance + 500e18);
+
+        // Third reduction
+        p2p.cancelOrReduceOrder(address(usdc), address(pepe), 100e18, 1);
+        assertEq(usdc.balanceOf(user1), initialBalance + 600e18);
+
+        vm.stopPrank();
+
+        bytes32 marketId = keccak256(
+            abi.encodePacked(address(usdc), address(pepe))
+        );
+        (, , , , uint256 totalLiquidity, ) = p2p.markets(marketId);
+
+        assertEq(totalLiquidity, 400e18);
+    }
+
+    function test_cancelAllOrdersInQueue() public {
+        p2p.createMarket(address(usdc), address(pepe));
+
+        // Create three orders
+        vm.startPrank(user1);
+        usdc.approve(address(p2p), 1000e18);
+        p2p.createOrder(address(usdc), address(pepe), 1000e18, 0, 0);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        usdc.approve(address(p2p), 2000e18);
+        p2p.createOrder(address(usdc), address(pepe), 2000e18, 0, 0);
+        vm.stopPrank();
+
+        vm.startPrank(user3);
+        usdc.approve(address(p2p), 500e18);
+        p2p.createOrder(address(usdc), address(pepe), 500e18, 0, 0);
+        vm.stopPrank();
+
+        // Cancel all orders
+        vm.prank(user1);
+        p2p.cancelOrReduceOrder(address(usdc), address(pepe), 1000e18, 1);
+
+        vm.prank(user2);
+        p2p.cancelOrReduceOrder(address(usdc), address(pepe), 2000e18, 2);
+
+        vm.prank(user3);
+        p2p.cancelOrReduceOrder(address(usdc), address(pepe), 500e18, 3);
+
+        bytes32 marketId = keccak256(
+            abi.encodePacked(address(usdc), address(pepe))
+        );
+        (, , uint256 headId, uint256 tailId, uint256 totalLiquidity, ) = p2p
+            .markets(marketId);
+
+        assertEq(headId, 0);
+        assertEq(tailId, 0);
+        assertEq(totalLiquidity, 0);
+    }
+
+    function test_createMarket_WithDifferentTokenPairs() public {
+        // Create USDC/PEPE market
+        p2p.createMarket(address(usdc), address(pepe));
+        bytes32 marketId1 = keccak256(
+            abi.encodePacked(address(usdc), address(pepe))
+        );
+
+        // Create WETH/USDC market
+        p2p.createMarket(address(weth), address(usdc));
+        bytes32 marketId2 = keccak256(
+            abi.encodePacked(address(weth), address(usdc))
+        );
+
+        // Create WETH/PEPE market
+        p2p.createMarket(address(weth), address(pepe));
+        bytes32 marketId3 = keccak256(
+            abi.encodePacked(address(weth), address(pepe))
+        );
+
+        // Verify all markets exist and are different
+        (address token0_1, address token1_1, , , , ) = p2p.markets(marketId1);
+        (address token0_2, address token1_2, , , , ) = p2p.markets(marketId2);
+        (address token0_3, address token1_3, , , , ) = p2p.markets(marketId3);
+
+        assertEq(token0_1, address(usdc));
+        assertEq(token1_1, address(pepe));
+        assertEq(token0_2, address(weth));
+        assertEq(token1_2, address(usdc));
+        assertEq(token0_3, address(weth));
+        assertEq(token1_3, address(pepe));
+
+        // Verify market IDs are different
+        assertTrue(marketId1 != marketId2);
+        assertTrue(marketId2 != marketId3);
+        assertTrue(marketId1 != marketId3);
+    }
+
+    function test_orderIds_IncrementCorrectly() public {
+        p2p.createMarket(address(usdc), address(pepe));
+
+        bytes32 marketId = keccak256(
+            abi.encodePacked(address(usdc), address(pepe))
+        );
+
+        // Initial nextOrderId should be 1
+        (, , , , , uint256 nextOrderId) = p2p.markets(marketId);
+        assertEq(nextOrderId, 1);
+
+        // Create first order
+        vm.startPrank(user1);
+        usdc.approve(address(p2p), 1000e18);
+        p2p.createOrder(address(usdc), address(pepe), 1000e18, 0, 0);
+        vm.stopPrank();
+
+        (, , , , , nextOrderId) = p2p.markets(marketId);
+        assertEq(nextOrderId, 2);
+
+        // Create second order
+        vm.startPrank(user2);
+        usdc.approve(address(p2p), 2000e18);
+        p2p.createOrder(address(usdc), address(pepe), 2000e18, 0, 0);
+        vm.stopPrank();
+
+        (, , , , , nextOrderId) = p2p.markets(marketId);
+        assertEq(nextOrderId, 3);
+
+        // Cancel first order - nextOrderId should still be 3
+        vm.prank(user1);
+        p2p.cancelOrReduceOrder(address(usdc), address(pepe), 1000e18, 1);
+
+        (, , , , , nextOrderId) = p2p.markets(marketId);
+        assertEq(nextOrderId, 3); // Doesn't decrement
+
+        // Create third order - should use id 3
+        vm.startPrank(user3);
+        usdc.approve(address(p2p), 500e18);
+        p2p.createOrder(address(usdc), address(pepe), 500e18, 0, 0);
+        vm.stopPrank();
+
+        (, , , , , nextOrderId) = p2p.markets(marketId);
+        assertEq(nextOrderId, 4);
+    }
+
+    function test_createOrder_TransfersTokensCorrectly() public {
+        p2p.createMarket(address(usdc), address(pepe));
+
+        uint256 user1BalanceBefore = usdc.balanceOf(user1);
+        uint256 contractBalanceBefore = usdc.balanceOf(address(p2p));
+
+        vm.startPrank(user1);
+        usdc.approve(address(p2p), 1000e18);
+        p2p.createOrder(address(usdc), address(pepe), 1000e18, 0, 0);
+        vm.stopPrank();
+
+        uint256 user1BalanceAfter = usdc.balanceOf(user1);
+        uint256 contractBalanceAfter = usdc.balanceOf(address(p2p));
+
+        assertEq(user1BalanceBefore - user1BalanceAfter, 1000e18);
+        assertEq(contractBalanceAfter - contractBalanceBefore, 1000e18);
+    }
+
+    function test_cancelOrder_RefundsTokensCorrectly() public {
+        p2p.createMarket(address(usdc), address(pepe));
+
+        vm.startPrank(user1);
+        usdc.approve(address(p2p), 1000e18);
+        p2p.createOrder(address(usdc), address(pepe), 1000e18, 0, 0);
+
+        uint256 user1BalanceBefore = usdc.balanceOf(user1);
+        uint256 contractBalanceBefore = usdc.balanceOf(address(p2p));
+
+        p2p.cancelOrReduceOrder(address(usdc), address(pepe), 400e18, 1);
+        vm.stopPrank();
+
+        uint256 user1BalanceAfter = usdc.balanceOf(user1);
+        uint256 contractBalanceAfter = usdc.balanceOf(address(p2p));
+
+        assertEq(user1BalanceAfter - user1BalanceBefore, 400e18);
+        assertEq(contractBalanceBefore - contractBalanceAfter, 400e18);
     }
 }
