@@ -1,5 +1,5 @@
 "use client";
-
+import { foundry } from "wagmi/chains"; // Make sure foundry is imported
 import { useState, useEffect } from "react";
 import {
   useAccount,
@@ -68,6 +68,7 @@ export function CreateOrderForm() {
   const { data: balanceData, isLoading: isLoadingBalance } = useBalance({
     address: userAddress,
     token: token0, // Address of the token to check balance for
+    chainId: foundry.id,
     query: {
       enabled: isConnected && !!token0 && token0 !== "0x", // Only run if connected and token0 is set
     },
@@ -148,8 +149,8 @@ export function CreateOrderForm() {
     try {
       const formattedAmount0 = parseUnits(amount0, token0Decimals);
       // Prices are normalized to 18 decimals
-      const formattedMaxPrice = maxPrice ? parseUnits(maxPrice, 18) : 0n;
-      const formattedMinPrice = minPrice ? parseUnits(minPrice, 18) : 0n;
+      const formattedMaxPrice = maxPrice ? parseUnits(maxPrice, 18) : BigInt(0);
+      const formattedMinPrice = minPrice ? parseUnits(minPrice, 18) : BigInt(0);
 
       createOrderWriteContract({
         address: p2pContractAddress,

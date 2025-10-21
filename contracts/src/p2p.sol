@@ -7,7 +7,32 @@ import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IER
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 contract P2P is ReentrancyGuard {
-    event MarketCreated(bytes32 markteId, address token0, address token1);
+    event MarketCreated(bytes32 marketId, address token0, address token1);
+    event OrderCreated(
+        bytes32 marketId,
+        address token0,
+        address token1,
+        uint256 amount0,
+        uint256 maxPrice,
+        uint256 minPrice,
+        uint256 orderId
+    );
+    event OrderReducedOrCancelled(
+        bytes32 marketId,
+        address token0,
+        address token1,
+        uint256 orderId,
+        uint256 amount0Closed
+    );
+    event OrderFilled(
+        bytes32 marketId,
+        address token0,
+        address token1,
+        uint256 orderId,
+        uint256 amount0Filled,
+        uint256 amount1Spent
+    );
+
     //@audit add more events
     struct QueueNode {
         uint256 nextId; //0 if this is the last
@@ -115,6 +140,15 @@ contract P2P is ReentrancyGuard {
             address(this),
             _amount0
         );
+        emit OrderCreated(
+            marketId,
+            _token0,
+            _token1,
+            _amount0,
+            _maxPrice,
+            _minPrice,
+            orderId
+        );
     }
 
     function cancelOrReduceOrder(
@@ -160,6 +194,13 @@ contract P2P is ReentrancyGuard {
         }
         market.totalLiquidity -= _amount0Close;
         IERC20Metadata(market.token0).transfer(msg.sender, _amount0Close);
+        emit OrderReducedOrCancelled(
+            marketId,
+            _token0,
+            _token1,
+            _orderId,
+            _amount0Close
+        );
     }
     // @audit create fillOrderExactAmountOut
     function fillOrderExactAmountIn(
@@ -270,6 +311,14 @@ contract P2P is ReentrancyGuard {
             );
 
             // Move to the next order in the queue
+            emit OrderFilled(
+                marketId,
+                _token0,
+                _token1,
+                currentOrderId,
+                amount0ToFillLoop,
+                amount1CostLoop
+            );
             currentOrderId = nextOrderId;
         }
         market.totalLiquidity -= amount0FilledTotal;

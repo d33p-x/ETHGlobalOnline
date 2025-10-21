@@ -31,7 +31,6 @@ function App() {
           </button>
         )}
       </div>
-
       <div>
         <h2>Connect</h2>
         {connectors.map((connector) => (
@@ -51,6 +50,7 @@ function App() {
       <hr />
       <CreateMarketForm />
       <hr />
+      <CreateOrderForm /> {/* <-- Add this */}
     </>
   );
 }

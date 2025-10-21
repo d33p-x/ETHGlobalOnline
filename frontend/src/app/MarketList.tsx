@@ -16,7 +16,7 @@ const p2pAbi = [
     type: "event",
     name: "MarketCreated",
     inputs: [
-      { name: "markteId", type: "bytes32", indexed: false },
+      { name: "marketId", type: "bytes32", indexed: false },
       { name: "token0", type: "address", indexed: false },
       { name: "token1", type: "address", indexed: false },
     ],
@@ -79,7 +79,7 @@ export function MarketList() {
         });
 
         const parsedMarkets = logs.map((log) => ({
-          marketId: log.args.markteId!,
+          marketId: log.args.marketId!,
           token0: log.args.token0!,
           token1: log.args.token1!,
         }));
@@ -116,7 +116,7 @@ export function MarketList() {
           continue;
         }
         const newMarket = {
-          marketId: log.args.markteId!,
+          marketId: log.args.marketId!,
           token0: log.args.token0!,
           token1: log.args.token1!,
         };
