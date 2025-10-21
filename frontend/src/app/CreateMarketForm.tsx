@@ -26,8 +26,12 @@ const p2pAbi = [
 export function CreateMarketForm() {
   // --- Form State ---
   // Default to WETH and USDC from deploy script
-  const [token0, setToken0] = useState<Address>("0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9"); // WETH
-  const [token1, setToken1] = useState<Address>("0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0"); // USDC
+  const [token0, setToken0] = useState<Address>(
+    "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9"
+  ); // WETH
+  const [token1, setToken1] = useState<Address>(
+    "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0"
+  ); // USDC
 
   // --- Wagmi Hook ---
   const { writeContract, data: hash, status, error } = useWriteContract();
@@ -52,7 +56,14 @@ export function CreateMarketForm() {
   return (
     <form onSubmit={handleSubmit}>
       <h3>Create Market</h3>
-      <div style={{ marginBottom: "10px", padding: "10px", backgroundColor: "#f0f0f0", color: "#000" }}>
+      <div
+        style={{
+          marginBottom: "10px",
+          padding: "10px",
+          backgroundColor: "#f0f0f0",
+          color: "#000",
+        }}
+      >
         <small style={{ color: "#000" }}>
           <strong>Instructions:</strong>
           <br />
@@ -88,7 +99,10 @@ export function CreateMarketForm() {
         </label>
       </div>
 
-      <button type="submit" disabled={status === "pending" || !token0 || !token1}>
+      <button
+        type="submit"
+        disabled={status === "pending" || !token0 || !token1}
+      >
         {status === "pending" ? "Confirming..." : "Create Market"}
       </button>
 
@@ -105,7 +119,10 @@ export function CreateMarketForm() {
         )}
         {status === "error" && (
           <div style={{ color: "red" }}>
-            <p><strong>Error:</strong> {(error as BaseError)?.shortMessage || error?.message}</p>
+            <p>
+              <strong>Error:</strong>{" "}
+              {(error as BaseError)?.shortMessage || error?.message}
+            </p>
             <details>
               <summary>Full error details</summary>
               <pre style={{ fontSize: "10px", overflow: "auto" }}>
@@ -115,11 +132,11 @@ export function CreateMarketForm() {
             <p>
               <strong>Common issues:</strong>
               <br />
-              - Tokens don't have price feeds set (check deploy script ran correctly)
+              - Tokens don't have price feeds set (check deploy script ran
+              correctly)
               <br />
               - Wrong contract address (check P2P contract was deployed)
-              <br />
-              - Not connected to Anvil network (Chain ID should be 31337)
+              <br />- Not connected to Anvil network (Chain ID should be 31337)
             </p>
           </div>
         )}

@@ -1,17 +1,18 @@
 // frontend/src/app/OrderList.tsx
 "use client";
 
+// 1. Import useState
 import { useEffect, useState } from "react";
 import { usePublicClient, useWatchContractEvent } from "wagmi";
 import { foundry } from "wagmi/chains"; // Your chain config
 import { type Address, type Log, formatUnits } from "viem";
 
 // --- Config ---
-// Same as your other components
 const p2pContractAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"; // Ensure this is correct!
 
 // ABI including ONLY the order-related events
 const p2pOrderEventsAbi = [
+  // ... (ABI remains the same)
   {
     type: "event",
     name: "OrderCreated",
@@ -71,29 +72,22 @@ type Order = {
 // Map to store orders, keyed by orderId
 type OrderMap = Map<bigint, Order>;
 
-interface OrderListProps {
-  marketId: string | null; // Pass the selected marketId, or null if none selected
-  // You might also pass token addresses/decimals for display formatting
-  token0?: Address;
-  token1?: Address;
-  decimals0?: number;
-  decimals1?: number;
-}
-
-export function OrderList({
-  marketId,
-  token0,
-  token1,
-  decimals0 = 18,
-}: OrderListProps) {
+// 2. Remove all props
+export function OrderList() {
+  // 3. Add internal state for marketId, orders, loading, and error
+  const [marketId, setMarketId] = useState("");
   const [orders, setOrders] = useState<OrderMap>(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 4. Hardcode decimals for now, since props were removed
+  const decimals0 = 18;
 
   const client = usePublicClient({ chainId: foundry.id }); // Assuming Anvil
 
   // --- Fetch historical events for the selected market ---
   useEffect(() => {
+    // 5. Check for marketId from state
     if (!client || !marketId) {
       setOrders(new Map()); // Clear orders if no market selected
       setIsLoading(false);
@@ -117,6 +111,7 @@ export function OrderList({
         });
         console.log(`Found ${createdLogs.length} OrderCreated logs`);
 
+        // ... (rest of your log fetching and processing logic remains the same)
         // 2. Fetch OrderReducedOrCancelled events
         const reducedLogs = await client.getLogs({
           address: p2pContractAddress,
@@ -214,67 +209,74 @@ export function OrderList({
     };
 
     fetchOrderLogs();
-    // Refetch when the marketId changes
+    // Refetch when the marketId (from state) changes
   }, [client, marketId]);
 
   // --- TODO: Add useWatchContractEvent hooks here ---
-  // You'll need separate watchers for OrderCreated, OrderReducedOrCancelled, and OrderFilled,
-  // each filtered by the current `marketId`.
-  // When an event comes in, update the `orders` state Map accordingly.
-  // - Created: Add the new order.
-  // - Reduced/Cancelled: Find the order by ID, decrease remainingAmount0. Delete if 0.
-  // - Filled: Find the order by ID, decrease remainingAmount0. Delete if 0.
-
-  if (!marketId) {
-    return <div>Select a market to view orders.</div>;
-  }
-
-  if (isLoading) {
-    return <div>Loading orders for market {marketId.substring(0, 10)}...</div>;
-  }
-
-  if (error) {
-    return <div style={{ color: "red" }}>Error loading orders: {error}</div>;
-  }
+  // ...
 
   const orderArray = Array.from(orders.values());
 
   return (
     <div>
-      <h4>Orders for Market {marketId.substring(0, 10)}...</h4>
-      {orderArray.length === 0 ? (
+      {/* 6. Add the input field here */}
+      <h3>View Orders for Market</h3>
+      <label>
+        Enter Market ID:
+        <input
+          type="text"
+          value={marketId}
+          onChange={(e) => setMarketId(e.target.value)}
+          placeholder="0x..."
+          style={{ width: "400px" }}
+        />
+      </label>
+
+      {/* 7. Update conditional rendering logic */}
+      {!marketId ? (
+        <p>Enter a Market ID above to view orders.</p>
+      ) : isLoading ? (
+        <div>Loading orders for market {marketId.substring(0, 10)}...</div>
+      ) : error ? (
+        <div style={{ color: "red" }}>Error loading orders: {error}</div>
+      ) : orderArray.length === 0 ? (
         <p>No active orders found for this market.</p>
       ) : (
-        <table border={1} style={{ fontSize: "12px", width: "100%" }}>
-          <thead>
-            <tr>
-              <th>Order ID</th>
-              <th>Maker</th>
-              <th>Remaining Amount ({token0?.substring(0, 6)}...)</th>
-              <th>Min Price (USD)</th>
-              <th>Max Price (USD)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orderArray.map((order) => (
-              <tr key={order.orderId.toString()}>
-                <td>{order.orderId.toString()}</td>
-                <td>{order.maker.substring(0, 10)}...</td>
-                <td>{formatUnits(order.remainingAmount0, decimals0)}</td>
-                <td>
-                  {order.minPrice > 0n
-                    ? formatUnits(order.minPrice, 18)
-                    : "N/A"}
-                </td>
-                <td>
-                  {order.maxPrice > 0n
-                    ? formatUnits(order.maxPrice, 18)
-                    : "N/A"}
-                </td>
+        <>
+          <h4>Orders for Market {marketId.substring(0, 10)}...</h4>
+          <table border={1} style={{ fontSize: "12px", width: "100%" }}>
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Maker</th>
+                {/* 8. Use hardcoded decimals */}
+                <th>Remaining Amount</th>
+                <th>Min Price (USD)</th>
+                <th>Max Price (USD)</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {orderArray.map((order) => (
+                <tr key={order.orderId.toString()}>
+                  <td>{order.orderId.toString()}</td>
+                  <td>{order.maker.substring(0, 10)}...</td>
+                  {/* 8. Use hardcoded decimals */}
+                  <td>{formatUnits(order.remainingAmount0, decimals0)}</td>
+                  <td>
+                    {order.minPrice > 0n
+                      ? formatUnits(order.minPrice, 18)
+                      : "N/A"}
+                  </td>
+                  <td>
+                    {order.maxPrice > 0n
+                      ? formatUnits(order.maxPrice, 18)
+                      : "N/A"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
       )}
     </div>
   );

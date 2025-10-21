@@ -5,6 +5,7 @@ import { CreateOrderForm } from "./CreateOrderForm";
 import { CreateMarketForm } from "./CreateMarketForm";
 import { MarketList } from "./MarketList";
 import { Debug } from "./Debug";
+import { OrderList } from "./OrderList";
 
 function App() {
   const account = useAccount();
@@ -48,9 +49,12 @@ function App() {
       <hr />
       <MarketList />
       <hr />
+      <OrderList />
+      <hr />
       <CreateMarketForm />
       <hr />
       <CreateOrderForm /> {/* <-- Add this */}
+      <hr />
     </>
   );
 }

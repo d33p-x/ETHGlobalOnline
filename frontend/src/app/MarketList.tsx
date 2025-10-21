@@ -74,7 +74,7 @@ export function MarketList() {
           address: p2pContractAddress,
           event: p2pAbi[0],
           // 4. Use numberToHex for block numbers in RPC calls
-          fromBlock: BigInt(0), // Explicitly format as hex string "0x0"
+          fromBlock: 0n, // Explicitly format as hex string "0x0"
           toBlock: "latest",
         });
 
@@ -151,8 +151,8 @@ export function MarketList() {
               key={market.marketId}
               style={{ fontFamily: "monospace", fontSize: "12px" }}
             >
-              <strong>Market ID:</strong> {market.marketId.substring(0, 10)}...
-              | <strong>Pair:</strong> {market.token0} / {market.token1}
+              <strong>Market ID:</strong> {market.marketId} |{" "}
+              <strong>Pair:</strong> {market.token0} / {market.token1}
             </li>
           ))}
         </ul>

@@ -37,7 +37,7 @@ const p2pAbi = [
     stateMutability: "nonpayable",
   },
 ] as const;
-
+// @todo change the 0n to 0n again in all files
 // --- Hardcoded Decimals (Based on DeployLocal.s.sol) ---
 // Ideally, fetch this dynamically from the Market struct or token contract
 const tokenDecimalsMap: Record<Address, number> = {
@@ -229,8 +229,8 @@ export function CreateOrderForm() {
     try {
       const formattedAmount0 = parseUnits(amount0, token0Decimals);
       // Prices are normalized to 18 decimals
-      const formattedMaxPrice = maxPrice ? parseUnits(maxPrice, 18) : BigInt(0); // Use BigInt(0)
-      const formattedMinPrice = minPrice ? parseUnits(minPrice, 18) : BigInt(0); // Use BigInt(0)
+      const formattedMaxPrice = maxPrice ? parseUnits(maxPrice, 18) : 0n; // Use 0n
+      const formattedMinPrice = minPrice ? parseUnits(minPrice, 18) : 0n; // Use 0n
 
       createOrderWriteContract({
         address: p2pContractAddress,
