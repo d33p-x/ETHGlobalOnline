@@ -9,7 +9,8 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 contract P2P is ReentrancyGuard {
     event MarketCreated(bytes32 marketId, address token0, address token1);
     event OrderCreated(
-        bytes32 marketId,
+        bytes32 indexed marketId,
+        address indexed maker,
         address token0,
         address token1,
         uint256 amount0,
@@ -18,22 +19,24 @@ contract P2P is ReentrancyGuard {
         uint256 orderId
     );
     event OrderReducedOrCancelled(
-        bytes32 marketId,
+        bytes32 indexed marketId,
+        address maker,
         address token0,
         address token1,
-        uint256 orderId,
+        uint256 indexed orderId,
         uint256 amount0Closed
     );
+
     event OrderFilled(
-        bytes32 marketId,
+        bytes32 indexed marketId,
         address token0,
         address token1,
-        uint256 orderId,
+        uint256 indexed orderId,
         uint256 amount0Filled,
-        uint256 amount1Spent
+        uint256 amount1Spent,
+        address indexed taker
     );
 
-    //@audit add more events
     struct QueueNode {
         uint256 nextId; //0 if this is the last
         uint256 prevId; //0 if this is the first
@@ -142,6 +145,7 @@ contract P2P is ReentrancyGuard {
         );
         emit OrderCreated(
             marketId,
+            msg.sender,
             _token0,
             _token1,
             _amount0,
@@ -196,6 +200,7 @@ contract P2P is ReentrancyGuard {
         IERC20Metadata(market.token0).transfer(msg.sender, _amount0Close);
         emit OrderReducedOrCancelled(
             marketId,
+            msg.sender,
             _token0,
             _token1,
             _orderId,
@@ -317,7 +322,8 @@ contract P2P is ReentrancyGuard {
                 _token1,
                 currentOrderId,
                 amount0ToFillLoop,
-                amount1CostLoop
+                amount1CostLoop,
+                msg.sender
             );
             currentOrderId = nextOrderId;
         }
