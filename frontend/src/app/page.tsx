@@ -2,6 +2,9 @@
 
 import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { CreateOrderForm } from "./CreateOrderForm";
+import { CreateMarketForm } from "./CreateMarketForm";
+import { MarketList } from "./MarketList";
+import { Debug } from "./Debug";
 
 function App() {
   const account = useAccount();
@@ -10,6 +13,7 @@ function App() {
 
   return (
     <>
+      <Debug />
       <div>
         <h2>Account</h2>
 
@@ -42,7 +46,11 @@ function App() {
         <div>{status}</div>
         <div>{error?.message}</div>
       </div>
-      <CreateOrderForm />
+      <hr />
+      <MarketList />
+      <hr />
+      <CreateMarketForm />
+      <hr />
     </>
   );
 }
