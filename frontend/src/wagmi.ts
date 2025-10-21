@@ -1,13 +1,13 @@
 import { cookieStorage, createConfig, createStorage, http } from "wagmi";
 import { mainnet, sepolia, foundry } from "wagmi/chains";
-import { baseAccount, injected, walletConnect } from "wagmi/connectors";
+import { injected } from "wagmi/connectors";
 
 export function getConfig() {
   return createConfig({
-    chains: [mainnet, sepolia, foundry],
+    chains: [foundry],
     connectors: [
       injected(),
-      baseAccount(),
+      // baseAccount(),
       // walletConnect({ projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID! }),
     ],
     storage: createStorage({
@@ -15,8 +15,6 @@ export function getConfig() {
     }),
     ssr: true,
     transports: {
-      [mainnet.id]: http(),
-      [sepolia.id]: http(),
       [foundry.id]: http("http://127.0.0.1:8545"),
     },
   });

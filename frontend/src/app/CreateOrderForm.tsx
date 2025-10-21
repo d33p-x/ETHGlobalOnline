@@ -19,7 +19,7 @@ import { erc20Abi } from "viem"; // Viem includes standard ABIs
 
 // --- Config ---
 // ⚠️ Make sure this matches your deployed P2P contract
-const p2pContractAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
+const p2pContractAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"; // Example, update if needed
 
 // ABI for P2P createOrder function
 const p2pAbi = [
@@ -47,15 +47,15 @@ const tokenDecimalsMap: Record<Address, number> = {
 };
 
 export function CreateOrderForm() {
-  const { address: userAddress, isConnected } = useAccount();
+  const { address: userAddress, isConnected, chain } = useAccount(); // Add chain
 
   // --- Form State ---
   const [token0, setToken0] = useState<Address>(
-    "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9"
-  ); // Default WETH
+    "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9" // Default WETH
+  );
   const [token1, setToken1] = useState<Address>(
-    "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0"
-  ); // Default USDC
+    "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0" // Default USDC
+  );
   const [amount0, setAmount0] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [minPrice, setMinPrice] = useState("");
@@ -65,25 +65,74 @@ export function CreateOrderForm() {
   const token0Decimals = tokenDecimalsMap[token0] ?? 18; // Default to 18 if unknown
 
   // --- Get User Balance ---
-  const { data: balanceData, isLoading: isLoadingBalance } = useBalance({
+  const {
+    data: balanceData,
+    isLoading: isLoadingBalance,
+    error: balanceError,
+  } = useBalance({
+    // Added balanceError
     address: userAddress,
     token: token0, // Address of the token to check balance for
-    chainId: foundry.id,
+    chainId: foundry.id, // Explicitly target Anvil
     query: {
       enabled: isConnected && !!token0 && token0 !== "0x", // Only run if connected and token0 is set
     },
   });
 
+  // Add a log to see what the balance hook returns
+  useEffect(() => {
+    if (!isLoadingBalance) {
+      console.log("Balance Data:", balanceData);
+      if (balanceError) {
+        console.error("Balance Error:", balanceError);
+      }
+    }
+  }, [balanceData, isLoadingBalance, balanceError]);
+
   // --- Check Allowance ---
-  const { data: allowance, refetch: refetchAllowance } = useReadContract({
+  const {
+    data: allowance,
+    refetch: refetchAllowance,
+    isLoading: isLoadingAllowance, // Add isLoading state
+    error: allowanceError, // Add error state
+    status: allowanceStatus, // Add status state
+  } = useReadContract({
     address: token0,
     abi: erc20Abi,
     functionName: "allowance",
-    args: [userAddress!, p2pContractAddress], // owner, spender
+    // Ensure args are valid before enabling the query
+    args:
+      userAddress && p2pContractAddress
+        ? [userAddress, p2pContractAddress]
+        : undefined,
+    chainId: foundry.id, // Explicitly target Anvil
     query: {
-      enabled: isConnected && !!token0 && token0 !== "0x" && !!amount0, // Only run when needed
+      // Enable only when all necessary pieces are available
+      enabled:
+        isConnected &&
+        !!userAddress &&
+        !!token0 &&
+        token0 !== "0x" &&
+        !!p2pContractAddress &&
+        !!amount0 &&
+        chain?.id === foundry.id,
     },
   });
+
+  // --- Add Logging for Allowance Hook Results ---
+  useEffect(() => {
+    console.log("Allowance Hook Status:", allowanceStatus);
+    if (isLoadingAllowance) {
+      console.log("Allowance: Loading...");
+    }
+    if (allowance !== undefined) {
+      console.log("Allowance Value:", allowance, typeof allowance); // Log value and type
+    }
+    if (allowanceError) {
+      console.error("Allowance Error:", allowanceError);
+    }
+  }, [allowance, isLoadingAllowance, allowanceError, allowanceStatus]);
+  // --- End Logging ---
 
   // --- Wagmi Hooks for Writing Contracts ---
   const {
@@ -108,18 +157,49 @@ export function CreateOrderForm() {
 
   // --- Logic to check if approval is needed ---
   useEffect(() => {
-    if (!allowance || !amount0 || !token0Decimals) {
-      setNeedsApproval(false);
+    console.log(
+      `Checking needsApproval: allowance=${allowance}, amount0=${amount0}, token0Decimals=${token0Decimals}`
+    ); // Log inputs
+    // Reset needsApproval if inputs are missing or allowance hasn't loaded
+    if (allowance === undefined || !amount0 || !token0Decimals) {
+      if (needsApproval) {
+        // Only update state if it changes
+        console.log(
+          "Setting needsApproval to false (inputs missing or allowance undefined)"
+        );
+        setNeedsApproval(false);
+      }
       return;
     }
+
     try {
       const requiredAmount = parseUnits(amount0, token0Decimals);
-      setNeedsApproval(allowance < requiredAmount);
-    } catch {
-      // Handle invalid amount input gracefully
-      setNeedsApproval(false);
+      const shouldNeedApproval = allowance < requiredAmount;
+      console.log(
+        `Allowance check: Required=${requiredAmount}, Has=${allowance}, ShouldNeedApproval=${shouldNeedApproval}`
+      );
+      if (needsApproval !== shouldNeedApproval) {
+        // Only update state if it changes
+        console.log(`Setting needsApproval to ${shouldNeedApproval}`);
+        setNeedsApproval(shouldNeedApproval);
+      }
+    } catch (error) {
+      console.error("Error parsing amount for allowance check:", error);
+      if (needsApproval) {
+        // Only update state if it changes
+        console.log("Setting needsApproval to false (parse error)");
+        setNeedsApproval(false);
+      }
     }
-  }, [allowance, amount0, token0Decimals]);
+    // Add userAddress and p2pContractAddress as dependencies to ensure args are stable when checking
+  }, [
+    allowance,
+    amount0,
+    token0Decimals,
+    userAddress,
+    p2pContractAddress,
+    needsApproval,
+  ]); // Added needsApproval
 
   // --- Refetch allowance after approval succeeds ---
   useEffect(() => {
@@ -149,8 +229,8 @@ export function CreateOrderForm() {
     try {
       const formattedAmount0 = parseUnits(amount0, token0Decimals);
       // Prices are normalized to 18 decimals
-      const formattedMaxPrice = maxPrice ? parseUnits(maxPrice, 18) : BigInt(0);
-      const formattedMinPrice = minPrice ? parseUnits(minPrice, 18) : BigInt(0);
+      const formattedMaxPrice = maxPrice ? parseUnits(maxPrice, 18) : BigInt(0); // Use BigInt(0)
+      const formattedMinPrice = minPrice ? parseUnits(minPrice, 18) : BigInt(0); // Use BigInt(0)
 
       createOrderWriteContract({
         address: p2pContractAddress,
@@ -237,9 +317,11 @@ export function CreateOrderForm() {
             Balance:{" "}
             {isLoadingBalance
               ? "Loading..."
-              : balanceData
-                ? `${formatUnits(balanceData.value, balanceData.decimals)} ${balanceData.symbol}`
-                : "N/A"}
+              : balanceError
+                ? `Error: ${balanceError.message}`
+                : balanceData
+                  ? `${formatUnits(balanceData.value, balanceData.decimals)} ${balanceData.symbol}`
+                  : "N/A"}
           </span>
         )}
       </div>
@@ -264,6 +346,30 @@ export function CreateOrderForm() {
             placeholder="e.g., 2950.00 (Optional)"
           />
         </label>
+      </div>
+
+      {/* Add this section somewhere visible in the form for debugging */}
+      <div
+        style={{
+          border: "1px dashed grey",
+          padding: "5px",
+          margin: "10px 0",
+          fontSize: "10px",
+        }}
+      >
+        <p>DEBUG:</p>
+        <p>isConnected: {isConnected ? "true" : "false"}</p>
+        <p>userAddress: {userAddress?.toString()}</p>
+        <p>token0: {token0}</p>
+        <p>amount0: {amount0}</p>
+        <p>allowance Status: {allowanceStatus}</p>
+        <p>allowance isLoading: {isLoadingAllowance ? "true" : "false"}</p>
+        <p>
+          allowance Value: {allowance?.toString()} ({typeof allowance})
+        </p>
+        <p>allowance Error: {allowanceError?.message}</p>
+        <p>token0Decimals: {token0Decimals}</p>
+        <p>needsApproval State: {needsApproval ? "true" : "false"}</p>
       </div>
 
       {/* --- Submit Button Logic --- */}
