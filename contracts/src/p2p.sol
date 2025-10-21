@@ -3,12 +3,12 @@ pragma solidity 0.8.30;
 
 import "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
 import "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 contract P2P is ReentrancyGuard {
     event MarketCreated(bytes32 markteId, address token0, address token1);
-
+    //@audit add more events
     struct QueueNode {
         uint256 nextId; //0 if this is the last
         uint256 prevId; //0 if this is the first
@@ -24,6 +24,8 @@ contract P2P is ReentrancyGuard {
     struct Market {
         address token0; //the token on offer
         address token1; //the token sellers want to receive
+        uint8 decimals0;
+        uint8 decimals1;
         mapping(uint256 => Order) orders; //order mapping
         mapping(uint256 => QueueNode) queue; //linked list
         uint256 headId; // first order
@@ -59,6 +61,8 @@ contract P2P is ReentrancyGuard {
         Market storage newMarket = markets[marketId];
         newMarket.token0 = _token0;
         newMarket.token1 = _token1;
+        newMarket.decimals0 = IERC20Metadata(_token0).decimals();
+        newMarket.decimals1 = IERC20Metadata(_token1).decimals();
         newMarket.nextOrderId = 1;
         emit MarketCreated(marketId, _token0, _token1);
     }
@@ -106,7 +110,11 @@ contract P2P is ReentrancyGuard {
         market.tailId = orderId;
         market.totalLiquidity += _amount0;
         market.nextOrderId++;
-        IERC20(market.token0).transferFrom(msg.sender, address(this), _amount0);
+        IERC20Metadata(market.token0).transferFrom(
+            msg.sender,
+            address(this),
+            _amount0
+        );
     }
 
     function cancelOrReduceOrder(
@@ -151,9 +159,9 @@ contract P2P is ReentrancyGuard {
             delete market.queue[_orderId];
         }
         market.totalLiquidity -= _amount0Close;
-        IERC20(market.token0).transfer(msg.sender, _amount0Close);
+        IERC20Metadata(market.token0).transfer(msg.sender, _amount0Close);
     }
-
+    // @audit create fillOrderExactAmountOut
     function fillOrderExactAmountIn(
         bytes[] calldata priceUpdate,
         address _token0,
@@ -189,7 +197,12 @@ contract P2P is ReentrancyGuard {
         uint256 price0Seller = (price0 * 100005) / 100000; //seller receives 0.05% bonus
 
         Market storage market = markets[marketId];
-        uint256 amount0Target = (_amount1 * price1) / price0Buyer; //give buyer less because of fee
+
+        uint256 dec0Factor = 10 ** market.decimals0;
+        uint256 dec1Factor = 10 ** market.decimals1;
+
+        uint256 amount0Target = (_amount1 * price1 * dec0Factor) /
+            (price0Buyer * dec1Factor); //give buyer less because of fee
 
         require(amount0Target > 0);
         require(amount0Target <= market.totalLiquidity);
@@ -221,8 +234,9 @@ contract P2P is ReentrancyGuard {
                 amount0ToFillLoop = order.amount0;
             }
             // seller gets 0.05% more
-            uint256 amount1CostLoop = (amount0ToFillLoop * price0Seller) /
-                price1;
+            uint256 amount1CostLoop = (amount0ToFillLoop *
+                price0Seller *
+                dec1Factor) / (price1 * dec0Factor);
 
             order.amount0 -= amount0ToFillLoop;
             amount0FilledTotal += amount0ToFillLoop;
@@ -249,7 +263,7 @@ contract P2P is ReentrancyGuard {
                 delete market.orders[currentOrderId];
                 delete market.queue[currentOrderId];
             }
-            IERC20(_token1).transferFrom(
+            IERC20Metadata(_token1).transferFrom(
                 msg.sender,
                 orderMaker,
                 amount1CostLoop
@@ -259,15 +273,19 @@ contract P2P is ReentrancyGuard {
             currentOrderId = nextOrderId;
         }
         market.totalLiquidity -= amount0FilledTotal;
-        IERC20(_token0).transfer(msg.sender, amount0FilledTotal);
+        IERC20Metadata(_token0).transfer(msg.sender, amount0FilledTotal);
         uint256 protocolFee = _amount1 - amount1SpentOnSellers;
         if (protocolFee > 0) {
-            IERC20(_token1).transferFrom(msg.sender, owner, protocolFee);
+            IERC20Metadata(_token1).transferFrom(
+                msg.sender,
+                owner,
+                protocolFee
+            );
         }
 
         if (_amount1 > amount1SpentOnSellers + protocolFee) {
             uint256 refund = _amount1 - (amount1SpentOnSellers + protocolFee);
-            IERC20(_token1).transfer(msg.sender, refund);
+            IERC20Metadata(_token1).transfer(msg.sender, refund);
         }
     }
 

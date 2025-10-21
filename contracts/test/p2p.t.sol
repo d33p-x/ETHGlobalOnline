@@ -110,6 +110,8 @@ contract PEERTOPEERTEST is Test {
         (
             address tokenSell,
             address tokenBuy,
+            uint8 decimals0,
+            uint8 decimals1,
             uint256 headId,
             uint256 tailId,
             uint256 totalLiquidity,
@@ -169,6 +171,8 @@ contract PEERTOPEERTEST is Test {
         (
             ,
             ,
+            ,
+            ,
             uint256 headId,
             uint256 tailId,
             uint256 totalLiquidity,
@@ -207,6 +211,8 @@ contract PEERTOPEERTEST is Test {
             abi.encodePacked(address(usdc), address(pepe))
         );
         (
+            ,
+            ,
             ,
             ,
             uint256 headId,
@@ -253,6 +259,8 @@ contract PEERTOPEERTEST is Test {
         (
             ,
             ,
+            ,
+            ,
             uint256 headId,
             uint256 tailId,
             uint256 totalLiquidity,
@@ -283,6 +291,8 @@ contract PEERTOPEERTEST is Test {
             abi.encodePacked(address(usdc), address(pepe))
         );
         (
+            ,
+            ,
             ,
             ,
             uint256 headId,
@@ -326,6 +336,8 @@ contract PEERTOPEERTEST is Test {
         (
             ,
             ,
+            ,
+            ,
             uint256 headId,
             uint256 tailId,
             uint256 totalLiquidity,
@@ -361,6 +373,8 @@ contract PEERTOPEERTEST is Test {
         (
             ,
             ,
+            ,
+            ,
             uint256 headId,
             uint256 tailId,
             uint256 totalLiquidity,
@@ -394,6 +408,8 @@ contract PEERTOPEERTEST is Test {
             abi.encodePacked(address(usdc), address(pepe))
         );
         (
+            ,
+            ,
             ,
             ,
             uint256 headId,
@@ -498,6 +514,8 @@ contract PEERTOPEERTEST is Test {
         (
             ,
             ,
+            ,
+            ,
             uint256 headId1,
             uint256 tailId,
             uint256 totalLiquidity,
@@ -511,7 +529,7 @@ contract PEERTOPEERTEST is Test {
         vm.prank(user2);
         p2p.cancelOrReduceOrder(address(weth), address(usdc), 2e18, 2);
 
-        (, , headId1, tailId, totalLiquidity, nextOrderId) = p2p.markets(
+        (, , , , headId1, tailId, totalLiquidity, nextOrderId) = p2p.markets(
             marketId
         );
         assertEq(totalLiquidity, 16e18);
@@ -521,6 +539,8 @@ contract PEERTOPEERTEST is Test {
         p2p.cancelOrReduceOrder(address(weth), address(usdc), 10e18, 1);
 
         (
+            ,
+            ,
             ,
             ,
             uint256 headId,
@@ -550,7 +570,7 @@ contract PEERTOPEERTEST is Test {
         bytes32 marketId = keccak256(
             abi.encodePacked(address(usdc), address(pepe))
         );
-        (, , uint256 headId, uint256 tailId, uint256 totalLiquidity, ) = p2p
+        (, , , , uint256 headId, uint256 tailId, uint256 totalLiquidity, ) = p2p
             .markets(marketId);
 
         assertEq(headId, 1);
@@ -570,7 +590,7 @@ contract PEERTOPEERTEST is Test {
         bytes32 marketId = keccak256(
             abi.encodePacked(address(usdc), address(pepe))
         );
-        (, , uint256 headId, uint256 tailId, uint256 totalLiquidity, ) = p2p
+        (, , , , uint256 headId, uint256 tailId, uint256 totalLiquidity, ) = p2p
             .markets(marketId);
 
         assertEq(headId, 1);
@@ -596,7 +616,7 @@ contract PEERTOPEERTEST is Test {
         bytes32 marketId = keccak256(
             abi.encodePacked(address(usdc), address(pepe))
         );
-        (, , uint256 headId, uint256 tailId, uint256 totalLiquidity, ) = p2p
+        (, , , , uint256 headId, uint256 tailId, uint256 totalLiquidity, ) = p2p
             .markets(marketId);
 
         assertEq(headId, 1);
@@ -631,6 +651,8 @@ contract PEERTOPEERTEST is Test {
         (
             ,
             ,
+            ,
+            ,
             uint256 headId,
             uint256 tailId,
             uint256 totalLiquidity,
@@ -656,7 +678,7 @@ contract PEERTOPEERTEST is Test {
         bytes32 marketId = keccak256(
             abi.encodePacked(address(usdc), address(pepe))
         );
-        (, , , , uint256 totalLiquidity, ) = p2p.markets(marketId);
+        (, , , , , , uint256 totalLiquidity, ) = p2p.markets(marketId);
 
         assertEq(totalLiquidity, 1);
         assertEq(usdc.balanceOf(address(p2p)), 1);
@@ -676,7 +698,7 @@ contract PEERTOPEERTEST is Test {
         bytes32 marketId = keccak256(
             abi.encodePacked(address(usdc), address(pepe))
         );
-        (, , , , uint256 totalLiquidity, ) = p2p.markets(marketId);
+        (, , , , , , uint256 totalLiquidity, ) = p2p.markets(marketId);
 
         assertEq(totalLiquidity, largeAmount);
         assertEq(usdc.balanceOf(address(p2p)), largeAmount);
@@ -696,7 +718,7 @@ contract PEERTOPEERTEST is Test {
         bytes32 marketId = keccak256(
             abi.encodePacked(address(usdc), address(pepe))
         );
-        (, , uint256 headId, uint256 tailId, uint256 totalLiquidity, ) = p2p
+        (, , , , uint256 headId, uint256 tailId, uint256 totalLiquidity, ) = p2p
             .markets(marketId);
 
         assertEq(headId, 0);
@@ -730,7 +752,7 @@ contract PEERTOPEERTEST is Test {
         bytes32 marketId = keccak256(
             abi.encodePacked(address(usdc), address(pepe))
         );
-        (, , , , uint256 totalLiquidity, ) = p2p.markets(marketId);
+        (, , , , , , uint256 totalLiquidity, ) = p2p.markets(marketId);
 
         assertEq(totalLiquidity, 400e18);
     }
@@ -767,7 +789,7 @@ contract PEERTOPEERTEST is Test {
         bytes32 marketId = keccak256(
             abi.encodePacked(address(usdc), address(pepe))
         );
-        (, , uint256 headId, uint256 tailId, uint256 totalLiquidity, ) = p2p
+        (, , , , uint256 headId, uint256 tailId, uint256 totalLiquidity, ) = p2p
             .markets(marketId);
 
         assertEq(headId, 0);
@@ -795,9 +817,9 @@ contract PEERTOPEERTEST is Test {
         );
 
         // Verify all markets exist and are different
-        (address token0_1, address token1_1, , , , ) = p2p.markets(marketId1);
-        (address token0_2, address token1_2, , , , ) = p2p.markets(marketId2);
-        (address token0_3, address token1_3, , , , ) = p2p.markets(marketId3);
+        (address token0_1, address token1_1, , , , , , ) = p2p.markets(marketId1);
+        (address token0_2, address token1_2, , , , , , ) = p2p.markets(marketId2);
+        (address token0_3, address token1_3, , , , , , ) = p2p.markets(marketId3);
 
         assertEq(token0_1, address(usdc));
         assertEq(token1_1, address(pepe));
@@ -820,7 +842,7 @@ contract PEERTOPEERTEST is Test {
         );
 
         // Initial nextOrderId should be 1
-        (, , , , , uint256 nextOrderId) = p2p.markets(marketId);
+        (, , , , , , , uint256 nextOrderId) = p2p.markets(marketId);
         assertEq(nextOrderId, 1);
 
         // Create first order
@@ -829,7 +851,7 @@ contract PEERTOPEERTEST is Test {
         p2p.createOrder(address(usdc), address(pepe), 1000e18, 0, 0);
         vm.stopPrank();
 
-        (, , , , , nextOrderId) = p2p.markets(marketId);
+        (, , , , , , , nextOrderId) = p2p.markets(marketId);
         assertEq(nextOrderId, 2);
 
         // Create second order
@@ -838,14 +860,14 @@ contract PEERTOPEERTEST is Test {
         p2p.createOrder(address(usdc), address(pepe), 2000e18, 0, 0);
         vm.stopPrank();
 
-        (, , , , , nextOrderId) = p2p.markets(marketId);
+        (, , , , , , , nextOrderId) = p2p.markets(marketId);
         assertEq(nextOrderId, 3);
 
         // Cancel first order - nextOrderId should still be 3
         vm.prank(user1);
         p2p.cancelOrReduceOrder(address(usdc), address(pepe), 1000e18, 1);
 
-        (, , , , , nextOrderId) = p2p.markets(marketId);
+        (, , , , , , , nextOrderId) = p2p.markets(marketId);
         assertEq(nextOrderId, 3); // Doesn't decrement
 
         // Create third order - should use id 3
@@ -854,7 +876,7 @@ contract PEERTOPEERTEST is Test {
         p2p.createOrder(address(usdc), address(pepe), 500e18, 0, 0);
         vm.stopPrank();
 
-        (, , , , , nextOrderId) = p2p.markets(marketId);
+        (, , , , , , , nextOrderId) = p2p.markets(marketId);
         assertEq(nextOrderId, 4);
     }
 
