@@ -185,16 +185,19 @@ contract P2P is ReentrancyGuard {
         uint256 price1 = uint256(uint64(priceObject1.price) * 1e18) /
             (10 ** absExpo1);
 
+        uint256 price0Buyer = (price0 * 100010) / 100000; //buyer pays 0.1% fee
+        uint256 price0Seller = (price0 * 100005) / 100000; //seller receives 0.05% bonus
+
         Market storage market = markets[marketId];
-        uint256 amount0Target = (_amount1 * price1) / price0;
+        uint256 amount0Target = (_amount1 * price1) / price0Buyer; //give buyer less because of fee
 
         require(amount0Target > 0);
         require(amount0Target <= market.totalLiquidity);
 
         uint256 amount0FilledTotal = 0;
-        uint256 amount1SpentTotal = 0;
+        uint256 amount1SpentOnSellers = 0;
         uint256 currentOrderId = market.headId;
-
+        // @audit add loop limiter
         while (amount0FilledTotal < amount0Target && currentOrderId != 0) {
             Order storage order = market.orders[currentOrderId];
             QueueNode storage queueNode = market.queue[currentOrderId];
@@ -217,12 +220,13 @@ contract P2P is ReentrancyGuard {
             } else {
                 amount0ToFillLoop = order.amount0;
             }
-
-            uint256 amount1CostLoop = (amount0ToFillLoop * price0) / price1;
+            // seller gets 0.05% more
+            uint256 amount1CostLoop = (amount0ToFillLoop * price0Seller) /
+                price1;
 
             order.amount0 -= amount0ToFillLoop;
             amount0FilledTotal += amount0ToFillLoop;
-            amount1SpentTotal += amount1CostLoop;
+            amount1SpentOnSellers += amount1CostLoop;
 
             address orderMaker = order.maker;
 
@@ -256,9 +260,13 @@ contract P2P is ReentrancyGuard {
         }
         market.totalLiquidity -= amount0FilledTotal;
         IERC20(_token0).transfer(msg.sender, amount0FilledTotal);
+        uint256 protocolFee = _amount1 - amount1SpentOnSellers;
+        if (protocolFee > 0) {
+            IERC20(_token1).transferFrom(msg.sender, owner, protocolFee);
+        }
 
-        if (_amount1 > amount1SpentTotal) {
-            uint256 refund = _amount1 - amount1SpentTotal;
+        if (_amount1 > amount1SpentOnSellers + protocolFee) {
+            uint256 refund = _amount1 - (amount1SpentOnSellers + protocolFee);
             IERC20(_token1).transfer(msg.sender, refund);
         }
     }
