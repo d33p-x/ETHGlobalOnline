@@ -3,6 +3,7 @@
 import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { CreateOrderForm } from "./CreateOrderForm";
 import { CreateMarketForm } from "./CreateMarketForm";
+import { FillOrderForm } from "./FillOrderForm";
 import { MarketList } from "./MarketList";
 import { Debug } from "./Debug";
 import { OrderList } from "./OrderList";
@@ -54,6 +55,8 @@ function App() {
       <CreateMarketForm />
       <hr />
       <CreateOrderForm /> {/* <-- Add this */}
+      <hr />
+      <FillOrderForm />
       <hr />
     </>
   );

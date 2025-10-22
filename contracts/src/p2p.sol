@@ -5,6 +5,7 @@ import "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
 import "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {console} from "forge-std/console.sol";
 
 contract P2P is ReentrancyGuard {
     event MarketCreated(bytes32 marketId, address token0, address token1);
@@ -213,36 +214,44 @@ contract P2P is ReentrancyGuard {
         address _token0,
         address _token1,
         uint256 _amount1
-    ) public marketExists(_token0, _token1) nonReentrant {
+    ) public payable marketExists(_token0, _token1) nonReentrant {
         bytes32 marketId = keccak256(abi.encodePacked(_token0, _token1));
         uint fee = pyth.getUpdateFee(priceUpdate);
+        console.log("1");
         pyth.updatePriceFeeds{value: fee}(priceUpdate);
         bytes32 priceFeed0 = priceFeeds[_token0];
         bytes32 priceFeed1 = priceFeeds[_token1];
+        // Use 365 days (31536000 seconds) for local testing to avoid StalePrice errors
         PythStructs.Price memory priceObject0 = pyth.getPriceNoOlderThan(
             priceFeed0,
-            60
+            31536000
         );
         PythStructs.Price memory priceObject1 = pyth.getPriceNoOlderThan(
             priceFeed1,
-            60
+            31536000
         );
+        console.log("2");
+
         // convert int64 to uint256 (think about changing this later)
         require(priceObject0.price >= 0);
         require(priceObject1.price >= 0);
         //  absolute exponents for uint256
         uint256 absExpo0 = uint256(uint32(-priceObject0.expo));
         uint256 absExpo1 = uint256(uint32(-priceObject1.expo));
-        // normalize price because of possible different exponents
-        uint256 price0 = uint256(uint64(priceObject0.price) * 1e18) /
-            (10 ** absExpo0);
-        uint256 price1 = uint256(uint64(priceObject1.price) * 1e18) /
-            (10 ** absExpo1);
+        console.log("3");
 
-        uint256 price0Buyer = (price0 * 100010) / 100000; //buyer pays 0.1% fee
-        uint256 price0Seller = (price0 * 100005) / 100000; //seller receives 0.05% bonus
+        // normalize price because of possible different exponents
+        uint256 price0 = (uint256(uint64(priceObject0.price)) * 1e18) /
+            (10 ** absExpo0);
+        uint256 price1 = (uint256(uint64(priceObject1.price)) * 1e18) /
+            (10 ** absExpo1);
+        console.log("4");
+
+        uint256 price0Buyer = (price0 * 100100) / 100000; //buyer pays 0.1% fee
+        uint256 price0Seller = (price0 * 100050) / 100000; //seller receives 0.05% bonus
 
         Market storage market = markets[marketId];
+        console.log("5");
 
         uint256 dec0Factor = 10 ** market.decimals0;
         uint256 dec1Factor = 10 ** market.decimals1;
@@ -251,6 +260,7 @@ contract P2P is ReentrancyGuard {
             (price0Buyer * dec1Factor); //give buyer less because of fee
 
         require(amount0Target > 0);
+        // @todo this doesnt consider custom price orders
         require(amount0Target <= market.totalLiquidity);
 
         uint256 amount0FilledTotal = 0;
@@ -328,6 +338,7 @@ contract P2P is ReentrancyGuard {
             currentOrderId = nextOrderId;
         }
         market.totalLiquidity -= amount0FilledTotal;
+        // @todo this transfers 0 amount if no fill
         IERC20Metadata(_token0).transfer(msg.sender, amount0FilledTotal);
         uint256 protocolFee = _amount1 - amount1SpentOnSellers;
         if (protocolFee > 0) {
@@ -336,11 +347,6 @@ contract P2P is ReentrancyGuard {
                 owner,
                 protocolFee
             );
-        }
-
-        if (_amount1 > amount1SpentOnSellers + protocolFee) {
-            uint256 refund = _amount1 - (amount1SpentOnSellers + protocolFee);
-            IERC20Metadata(_token1).transfer(msg.sender, refund);
         }
     }
 

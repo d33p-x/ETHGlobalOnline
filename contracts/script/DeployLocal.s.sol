@@ -4,7 +4,7 @@ pragma solidity 0.8.30;
 import "forge-std/Script.sol";
 import "../src/p2p.sol";
 import "../test/MockERC20.sol";
-import "../test/MockPyth.sol";
+import {MockPyth} from "@pythnetwork/pyth-sdk-solidity/MockPyth.sol";
 
 contract DeployLocal is Script {
     function run() external {
@@ -24,8 +24,11 @@ contract DeployLocal is Script {
 
         // 1. Deploy Mock Pyth Oracle
         console.log("1. Deploying Mock Pyth Oracle...");
-        MockPyth mockPyth = new MockPyth();
+        // Deploy MockPyth with 365 days validity (31536000 seconds) and 0 wei update fee
+        // This prevents StalePrice errors during local testing
+        MockPyth mockPyth = new MockPyth(31536000, 0);
         console.log("   MockPyth deployed at:", address(mockPyth));
+        console.log("   (Prices valid for 365 days - no refresh needed!)");
         console.log("");
 
         // 2. Deploy P2P Contract
@@ -68,15 +71,48 @@ contract DeployLocal is Script {
         console.log("5. Setting Mock Prices in Pyth Oracle...");
 
         // USDC = $1.00 (price: 100000000, expo: -8 = $1.00)
-        mockPyth.setTestPrice(usdcPriceFeedId, 100000000);
+        bytes[] memory usdcUpdateData = new bytes[](1);
+        usdcUpdateData[0] = mockPyth.createPriceFeedUpdateData(
+            usdcPriceFeedId,
+            100000000, // price
+            1000000,   // conf
+            -8,        // expo
+            100000000, // emaPrice
+            1000000,   // emaConf
+            uint64(block.timestamp), // publishTime
+            0          // prevPublishTime
+        );
+        mockPyth.updatePriceFeeds(usdcUpdateData);
         console.log("   USDC price set to $1.00");
 
         // PEPE = $0.000001 (price: 100, expo: -8 = $0.000001)
-        mockPyth.setTestPrice(pepePriceFeedId, 100);
+        bytes[] memory pepeUpdateData = new bytes[](1);
+        pepeUpdateData[0] = mockPyth.createPriceFeedUpdateData(
+            pepePriceFeedId,
+            100,       // price
+            1,         // conf
+            -8,        // expo
+            100,       // emaPrice
+            1,         // emaConf
+            uint64(block.timestamp), // publishTime
+            0          // prevPublishTime
+        );
+        mockPyth.updatePriceFeeds(pepeUpdateData);
         console.log("   PEPE price set to $0.000001");
 
         // WETH = $3,000 (price: 300000000000, expo: -8 = $3000.00)
-        mockPyth.setTestPrice(wethPriceFeedId, 300000000000);
+        bytes[] memory wethUpdateData = new bytes[](1);
+        wethUpdateData[0] = mockPyth.createPriceFeedUpdateData(
+            wethPriceFeedId,
+            300000000000, // price
+            3000000000,   // conf
+            -8,           // expo
+            300000000000, // emaPrice
+            3000000000,   // emaConf
+            uint64(block.timestamp), // publishTime
+            0             // prevPublishTime
+        );
+        mockPyth.updatePriceFeeds(wethUpdateData);
         console.log("   WETH price set to $3,000.00");
         console.log("");
 
