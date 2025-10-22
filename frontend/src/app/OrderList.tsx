@@ -70,8 +70,7 @@ type Order = {
 // Map to store orders, keyed by orderId
 type OrderMap = Map<bigint, Order>;
 
-export function OrderList() {
-  const [marketId, setMarketId] = useState("");
+export function OrderList({ marketId }: { marketId: string }) {
   const [orders, setOrders] = useState<OrderMap>(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -364,6 +363,8 @@ export function OrderList() {
               updatedOrder.remainingAmount0 -= amount0Filled;
             } else {
               console.warn(
+                // 1. --- THIS WAS THE FIX ---
+                // Changed 'amountFilled' to 'amount0Filled' to match the destructured variable
                 `Live Order ${orderId}: amountFilled ${amount0Filled} > remaining ${updatedOrder.remainingAmount0}`
               );
               updatedOrder.remainingAmount0 = 0n;
@@ -389,20 +390,10 @@ export function OrderList() {
 
   return (
     <div>
-      <h3>View Orders for Market</h3>
-      <label>
-        Enter Market ID:
-        <input
-          type="text"
-          value={marketId}
-          onChange={(e) => setMarketId(e.target.value)}
-          placeholder="0x..."
-          style={{ width: "400px" }}
-        />
-      </label>
+      <h3>Order Book</h3>
 
       {!marketId ? (
-        <p>Enter a Market ID above to view orders.</p>
+        <p>Market ID not found.</p>
       ) : isLoading ? (
         <div>Loading orders for market {marketId.substring(0, 10)}...</div>
       ) : error ? (

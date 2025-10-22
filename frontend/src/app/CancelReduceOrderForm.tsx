@@ -1,4 +1,4 @@
-// frontend/src/app/CancelReduceOrderForm.tsx
+// src/app/CancelReduceOrderForm.tsx
 "use client";
 
 import { useState } from "react";
@@ -7,14 +7,12 @@ import {
   useWriteContract,
   useWaitForTransactionReceipt,
 } from "wagmi";
-import { foundry } from "wagmi/chains"; // Your chain config
+// ... (other imports)
 import { type Address, BaseError, parseUnits } from "viem";
 
-// --- Config ---
-// ⚠️ Make sure this matches your deployed P2P contract
-const p2pContractAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"; // Example, update if needed
+// ... (Config, ABI, Decimals Map remain the same) ...
+const p2pContractAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
 
-// ABI for P2P cancelOrReduceOrder function
 const p2pAbi = [
   {
     type: "function",
@@ -30,31 +28,34 @@ const p2pAbi = [
   },
 ] as const;
 
-// --- Hardcoded Decimals (Based on DeployLocal.s.sol) ---
-// Ideally, fetch this dynamically from the Market struct or token contract
 const tokenDecimalsMap: Record<Address, number> = {
   "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0": 6, // USDC
   "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9": 18, // PEPE
   "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9": 18, // WETH
 };
 
-export function CancelReduceOrderForm() {
+// 1. Accept props from the market page
+export function CancelReduceOrderForm({
+  defaultToken0,
+  defaultToken1,
+}: {
+  defaultToken0: Address;
+  defaultToken1: Address;
+}) {
   const { isConnected } = useAccount();
 
-  // --- Form State ---
-  const [token0, setToken0] = useState<Address>(
-    "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9" // Default WETH
-  );
-  const [token1, setToken1] = useState<Address>(
-    "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0" // Default USDC
-  );
+  // 2. Remove internal state for tokens
+  // const [token0, setToken0] = useState<Address>(...);
+  // const [token1, setToken1] = useState<Address>(...);
   const [amount0Close, setAmount0Close] = useState("");
   const [orderId, setOrderId] = useState("");
 
-  // --- Get Token 0 Decimals ---
-  const token0Decimals = tokenDecimalsMap[token0] ?? 18; // Default to 18 if unknown
+  // 3. Use the 'defaultToken0' prop directly
+  const token0 = defaultToken0;
+  const token1 = defaultToken1;
+  const token0Decimals = tokenDecimalsMap[token0] ?? 18;
 
-  // --- Wagmi Hooks for Writing Contracts ---
+  // ... (Wagmi hooks remain the same) ...
   const {
     data: cancelReduceHash,
     error: cancelReduceError,
@@ -62,34 +63,38 @@ export function CancelReduceOrderForm() {
     writeContract: cancelReduceWriteContract,
   } = useWriteContract();
 
-  // --- Monitor Transaction Confirmation ---
   const { isLoading: isConfirming, isSuccess: isConfirmed } =
     useWaitForTransactionReceipt({ hash: cancelReduceHash });
 
-  // --- Handle Submit ---
+  // 4. Handler now uses the 'token0' and 'token1' props
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isConnected || !token0 || !token1 || !amount0Close || !orderId) return;
+    if (!isConnected || !token0 || !token1 || !amount0Close || !orderId) return; // Use props
 
     try {
       const formattedAmount0Close = parseUnits(amount0Close, token0Decimals);
-      const formattedOrderId = BigInt(orderId); // Convert orderId string to bigint
+      const formattedOrderId = BigInt(orderId);
 
       cancelReduceWriteContract({
         address: p2pContractAddress,
         abi: p2pAbi,
         functionName: "cancelOrReduceOrder",
-        args: [token0, token1, formattedAmount0Close, formattedOrderId],
+        args: [
+          token0, // Use prop
+          token1, // Use prop
+          formattedAmount0Close,
+          formattedOrderId,
+        ],
       });
     } catch (err) {
       console.error("Formatting/submission error:", err);
-      // Display error to user if needed
     }
   };
 
   return (
     <form onSubmit={handleSubmit}>
       <h3>Cancel / Reduce Order</h3>
+      {/* ... (Instructions div can remain) ... */}
       <div
         style={{
           marginBottom: "10px",
@@ -112,38 +117,29 @@ export function CancelReduceOrderForm() {
           4. Only the original order creator (maker) can cancel/reduce.
         </small>
       </div>
-      <div>
+
+      {/* 5. Remove the input fields for token0 and token1 */}
+      {/* <div>
         <label>
           Token Sold in Order (token0):
-          <input
-            type="text"
-            value={token0}
-            onChange={(e) => setToken0(e.target.value as Address)}
-            placeholder="0x... (e.g., WETH address)"
-            style={{ width: "400px" }}
-          />
+          <input ... />
         </label>
       </div>
       <div>
         <label>
           Token Bought in Order (token1):
-          <input
-            type="text"
-            value={token1}
-            onChange={(e) => setToken1(e.target.value as Address)}
-            placeholder="0x... (e.g., USDC address)"
-            style={{ width: "400px" }}
-          />
+          <input ... />
         </label>
-      </div>
+      </div> */}
+
       <div>
         <label>
           Order ID to Modify:
           <input
-            type="number" // Use number input for ID
+            type="number"
             value={orderId}
             onChange={(e) => setOrderId(e.target.value)}
-            placeholder="e.g., 1"
+            placeholder="e.g., 1 (from Order Book)"
           />
         </label>
       </div>
@@ -159,7 +155,7 @@ export function CancelReduceOrderForm() {
         </label>
       </div>
 
-      {/* --- Submit Button Logic --- */}
+      {/* ... (Submit button and Feedback section remain the same) ... */}
       <button
         type="submit"
         disabled={

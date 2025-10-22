@@ -1,65 +1,62 @@
+// src/app/page.tsx
 "use client";
 
 import { useAccount, useConnect, useDisconnect } from "wagmi";
-import { CreateOrderForm } from "./CreateOrderForm";
 import { CreateMarketForm } from "./CreateMarketForm";
-import { FillOrderForm } from "./FillOrderForm";
 import { MarketList } from "./MarketList";
 import { Debug } from "./Debug";
-import { OrderList } from "./OrderList";
-import { CancelReduceOrderForm } from "./CancelReduceOrderForm";
 
-function App() {
+// Renamed the main component to 'WalletConnect' for clarity
+function WalletConnect() {
   const account = useAccount();
   const { connectors, connect, status, error } = useConnect();
   const { disconnect } = useDisconnect();
 
   return (
+    <div>
+      <h2>Account</h2>
+      <div>
+        status: {account.status}
+        <br />
+        addresses: {JSON.stringify(account.addresses)}
+        <br />
+        chainId: {account.chainId}
+      </div>
+
+      {account.status === "connected" && (
+        <button type="button" onClick={() => disconnect()}>
+          Disconnect
+        </button>
+      )}
+
+      <h2>Connect</h2>
+      {connectors.map((connector) => (
+        <button
+          key={connector.uid}
+          onClick={() => connect({ connector })}
+          type="button"
+        >
+          {connector.name}
+        </button>
+      ))}
+      <div>{status}</div>
+      <div>{error?.message}</div>
+    </div>
+  );
+}
+
+function App() {
+  return (
     <>
       <Debug />
-      <div>
-        <h2>Account</h2>
-
-        <div>
-          status: {account.status}
-          <br />
-          addresses: {JSON.stringify(account.addresses)}
-          <br />
-          chainId: {account.chainId}
-        </div>
-
-        {account.status === "connected" && (
-          <button type="button" onClick={() => disconnect()}>
-            Disconnect
-          </button>
-        )}
-      </div>
-      <div>
-        <h2>Connect</h2>
-        {connectors.map((connector) => (
-          <button
-            key={connector.uid}
-            onClick={() => connect({ connector })}
-            type="button"
-          >
-            {connector.name}
-          </button>
-        ))}
-        <div>{status}</div>
-        <div>{error?.message}</div>
-      </div>
+      <WalletConnect />
       <hr />
+      {/* The home page now shows the MarketList and CreateMarketForm.
+        All other forms are moved to the dynamic market page.
+      */}
       <MarketList />
       <hr />
-      <OrderList />
-      <hr />
       <CreateMarketForm />
-      <hr />
-      <CreateOrderForm /> {/* <-- Add this */}
-      <hr />
-      <FillOrderForm />
-      <hr />
-      <CancelReduceOrderForm />
     </>
   );
 }

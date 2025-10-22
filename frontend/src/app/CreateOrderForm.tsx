@@ -1,27 +1,26 @@
+// src/app/CreateOrderForm.tsx
 "use client";
-import { foundry } from "wagmi/chains"; // Make sure foundry is imported
+import { foundry } from "wagmi/chains";
 import { useState, useEffect } from "react";
 import {
   useAccount,
   useWriteContract,
-  useWaitForTransactionReceipt,
-  useReadContract,
+  useWaitForTransactionReceipt, // <--- 1. Fixed import
+  useReadContract, // <--- 1. Fixed import
   useBalance,
 } from "wagmi";
 import {
   type Address,
   BaseError,
-  parseUnits,
-  formatUnits,
+  parseUnits, // <--- 2. Fixed import
+  formatUnits, // <--- 2. Fixed import
   maxUint256,
 } from "viem";
-import { erc20Abi } from "viem"; // Viem includes standard ABIs
+import { erc20Abi } from "viem";
 
-// --- Config ---
-// ⚠️ Make sure this matches your deployed P2P contract
-const p2pContractAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"; // Example, update if needed
+// ... (Config and ABI remain the same) ...
+const p2pContractAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
 
-// ABI for P2P createOrder function
 const p2pAbi = [
   {
     type: "function",
@@ -37,49 +36,56 @@ const p2pAbi = [
     stateMutability: "nonpayable",
   },
 ] as const;
-// @todo change the 0n to 0n again in all files
-// --- Hardcoded Decimals (Based on DeployLocal.s.sol) ---
-// Ideally, fetch this dynamically from the Market struct or token contract
-const tokenDecimalsMap: Record<Address, number> = {
-  "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0": 6, // USDC
-  "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9": 18, // PEPE
-  "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9": 18, // WETH
+
+// 3. --- Fix for token map ---
+// Define a type for the token info
+type TokenInfo = { decimals: number; symbol: string };
+
+// Update the map type and content
+const tokenInfoMap: Record<Address, TokenInfo> = {
+  "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0": { decimals: 6, symbol: "USDC" },
+  "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9": {
+    decimals: 18,
+    symbol: "PEPE",
+  },
+  "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9": {
+    decimals: 18,
+    symbol: "WETH",
+  },
 };
 
-export function CreateOrderForm() {
-  const { address: userAddress, isConnected, chain } = useAccount(); // Add chain
+export function CreateOrderForm({
+  defaultToken0,
+  defaultToken1,
+}: {
+  defaultToken0: Address;
+  defaultToken1: Address;
+}) {
+  const { address: userAddress, isConnected, chain } = useAccount();
 
-  // --- Form State ---
-  const [token0, setToken0] = useState<Address>(
-    "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9" // Default WETH
-  );
-  const [token1, setToken1] = useState<Address>(
-    "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0" // Default USDC
-  );
   const [amount0, setAmount0] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [minPrice, setMinPrice] = useState("");
   const [needsApproval, setNeedsApproval] = useState(false);
 
-  // --- Get Token 0 Decimals ---
-  const token0Decimals = tokenDecimalsMap[token0] ?? 18; // Default to 18 if unknown
+  const token0 = defaultToken0;
+  const token1 = defaultToken1;
+  // 3. Get decimals from the new 'tokenInfoMap'
+  const token0Decimals = tokenInfoMap[token0]?.decimals ?? 18;
 
-  // --- Get User Balance ---
   const {
     data: balanceData,
     isLoading: isLoadingBalance,
     error: balanceError,
   } = useBalance({
-    // Added balanceError
     address: userAddress,
-    token: token0, // Address of the token to check balance for
-    chainId: foundry.id, // Explicitly target Anvil
+    token: token0,
+    chainId: foundry.id,
     query: {
-      enabled: isConnected && !!token0 && token0 !== "0x", // Only run if connected and token0 is set
+      enabled: isConnected && !!token0 && token0 !== "0x",
     },
   });
 
-  // Add a log to see what the balance hook returns
   useEffect(() => {
     if (!isLoadingBalance) {
       console.log("Balance Data:", balanceData);
@@ -89,25 +95,23 @@ export function CreateOrderForm() {
     }
   }, [balanceData, isLoadingBalance, balanceError]);
 
-  // --- Check Allowance ---
   const {
     data: allowance,
     refetch: refetchAllowance,
-    isLoading: isLoadingAllowance, // Add isLoading state
-    error: allowanceError, // Add error state
-    status: allowanceStatus, // Add status state
+    isLoading: isLoadingAllowance,
+    error: allowanceError,
+    status: allowanceStatus,
   } = useReadContract({
+    // <--- Was missing
     address: token0,
     abi: erc20Abi,
     functionName: "allowance",
-    // Ensure args are valid before enabling the query
     args:
       userAddress && p2pContractAddress
         ? [userAddress, p2pContractAddress]
         : undefined,
-    chainId: foundry.id, // Explicitly target Anvil
+    chainId: foundry.id,
     query: {
-      // Enable only when all necessary pieces are available
       enabled:
         isConnected &&
         !!userAddress &&
@@ -119,22 +123,19 @@ export function CreateOrderForm() {
     },
   });
 
-  // --- Add Logging for Allowance Hook Results ---
   useEffect(() => {
     console.log("Allowance Hook Status:", allowanceStatus);
     if (isLoadingAllowance) {
       console.log("Allowance: Loading...");
     }
     if (allowance !== undefined) {
-      console.log("Allowance Value:", allowance, typeof allowance); // Log value and type
+      console.log("Allowance Value:", allowance, typeof allowance);
     }
     if (allowanceError) {
       console.error("Allowance Error:", allowanceError);
     }
   }, [allowance, isLoadingAllowance, allowanceError, allowanceStatus]);
-  // --- End Logging ---
 
-  // --- Wagmi Hooks for Writing Contracts ---
   const {
     data: approveHash,
     error: approveError,
@@ -149,21 +150,17 @@ export function CreateOrderForm() {
     writeContract: createOrderWriteContract,
   } = useWriteContract();
 
-  // --- Monitor Transaction Confirmation ---
   const { isLoading: isApproving, isSuccess: isApproved } =
-    useWaitForTransactionReceipt({ hash: approveHash });
+    useWaitForTransactionReceipt({ hash: approveHash }); // <--- Was missing
   const { isLoading: isConfirming, isSuccess: isConfirmed } =
-    useWaitForTransactionReceipt({ hash: createOrderHash });
+    useWaitForTransactionReceipt({ hash: createOrderHash }); // <--- Was missing
 
-  // --- Logic to check if approval is needed ---
   useEffect(() => {
     console.log(
       `Checking needsApproval: allowance=${allowance}, amount0=${amount0}, token0Decimals=${token0Decimals}`
-    ); // Log inputs
-    // Reset needsApproval if inputs are missing or allowance hasn't loaded
+    );
     if (allowance === undefined || !amount0 || !token0Decimals) {
       if (needsApproval) {
-        // Only update state if it changes
         console.log(
           "Setting needsApproval to false (inputs missing or allowance undefined)"
         );
@@ -173,25 +170,22 @@ export function CreateOrderForm() {
     }
 
     try {
-      const requiredAmount = parseUnits(amount0, token0Decimals);
+      const requiredAmount = parseUnits(amount0, token0Decimals); // <--- Was missing
       const shouldNeedApproval = allowance < requiredAmount;
       console.log(
         `Allowance check: Required=${requiredAmount}, Has=${allowance}, ShouldNeedApproval=${shouldNeedApproval}`
       );
       if (needsApproval !== shouldNeedApproval) {
-        // Only update state if it changes
         console.log(`Setting needsApproval to ${shouldNeedApproval}`);
         setNeedsApproval(shouldNeedApproval);
       }
     } catch (error) {
       console.error("Error parsing amount for allowance check:", error);
       if (needsApproval) {
-        // Only update state if it changes
         console.log("Setting needsApproval to false (parse error)");
         setNeedsApproval(false);
       }
     }
-    // Add userAddress and p2pContractAddress as dependencies to ensure args are stable when checking
   }, [
     allowance,
     amount0,
@@ -199,16 +193,14 @@ export function CreateOrderForm() {
     userAddress,
     p2pContractAddress,
     needsApproval,
-  ]); // Added needsApproval
+  ]);
 
-  // --- Refetch allowance after approval succeeds ---
   useEffect(() => {
     if (isApproved) {
       refetchAllowance();
     }
   }, [isApproved, refetchAllowance]);
 
-  // --- Handle Approve ---
   const handleApprove = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token0 || !amount0) return;
@@ -217,20 +209,18 @@ export function CreateOrderForm() {
       address: token0,
       abi: erc20Abi,
       functionName: "approve",
-      args: [p2pContractAddress, maxUint256], // Approve "infinite" amount
+      args: [p2pContractAddress, maxUint256],
     });
   };
 
-  // --- Handle Create Order ---
   const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (needsApproval || !token0 || !token1 || !amount0) return;
 
     try {
-      const formattedAmount0 = parseUnits(amount0, token0Decimals);
-      // Prices are normalized to 18 decimals
-      const formattedMaxPrice = maxPrice ? parseUnits(maxPrice, 18) : 0n; // Use 0n
-      const formattedMinPrice = minPrice ? parseUnits(minPrice, 18) : 0n; // Use 0n
+      const formattedAmount0 = parseUnits(amount0, token0Decimals); // <--- Was missing
+      const formattedMaxPrice = maxPrice ? parseUnits(maxPrice, 18) : 0n; // <--- Was missing
+      const formattedMinPrice = minPrice ? parseUnits(minPrice, 18) : 0n; // <--- Was missing
 
       createOrderWriteContract({
         address: p2pContractAddress,
@@ -246,13 +236,13 @@ export function CreateOrderForm() {
       });
     } catch (err) {
       console.error("Formatting/submission error:", err);
-      // Display error to user if needed
     }
   };
 
   return (
     <form onSubmit={needsApproval ? handleApprove : handleCreateOrder}>
-      <h3>Create Order</h3>
+      {/* 3. Get symbol from the new 'tokenInfoMap' */}
+      <h3>Create Order (Sell {tokenInfoMap[token0]?.symbol ?? "Token"})</h3>
       <div
         style={{
           marginBottom: "10px",
@@ -276,30 +266,7 @@ export function CreateOrderForm() {
           5. Prices are optional (0 means no limit).
         </small>
       </div>
-      <div>
-        <label>
-          Token to Sell (token0):
-          <input
-            type="text"
-            value={token0}
-            onChange={(e) => setToken0(e.target.value as Address)}
-            placeholder="0x... (e.g., WETH address)"
-            style={{ width: "400px" }}
-          />
-        </label>
-      </div>
-      <div>
-        <label>
-          Token to Buy (token1):
-          <input
-            type="text"
-            value={token1}
-            onChange={(e) => setToken1(e.target.value as Address)}
-            placeholder="0x... (e.g., USDC address)"
-            style={{ width: "400px" }}
-          />
-        </label>
-      </div>
+
       <div>
         <label>
           Amount to Sell (amount0):
@@ -320,7 +287,10 @@ export function CreateOrderForm() {
               : balanceError
                 ? `Error: ${balanceError.message}`
                 : balanceData
-                  ? `${formatUnits(balanceData.value, balanceData.decimals)} ${balanceData.symbol}`
+                  ? `${formatUnits(balanceData.value, balanceData.decimals)} ${
+                      // <--- Was missing
+                      balanceData.symbol
+                    }`
                   : "N/A"}
           </span>
         )}
@@ -348,7 +318,6 @@ export function CreateOrderForm() {
         </label>
       </div>
 
-      {/* Add this section somewhere visible in the form for debugging */}
       <div
         style={{
           border: "1px dashed grey",
@@ -372,7 +341,6 @@ export function CreateOrderForm() {
         <p>needsApproval State: {needsApproval ? "true" : "false"}</p>
       </div>
 
-      {/* --- Submit Button Logic --- */}
       <button
         type="submit"
         disabled={isApproving || isConfirming || !isConnected || !amount0}

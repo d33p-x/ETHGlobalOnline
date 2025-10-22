@@ -1,17 +1,16 @@
+// src/app/MarketList.tsx
 "use client";
 
 import { useEffect, useState } from "react";
-// 1. Import chains and Chain type
 import { useAccount, usePublicClient, useWatchContractEvent } from "wagmi";
-import { foundry } from "wagmi/chains"; // Import your foundry chain config
-import { type Address, type Log, formatUnits, numberToHex } from "viem"; // Import numberToHex
+import { foundry } from "wagmi/chains";
+import { type Address, type Log } from "viem";
+import Link from "next/link"; // <-- 1. Import Link
 
-// --- Config ---
-// ⚠️ Make sure this is your deployed contract address
-const p2pContractAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"; // From your logs
+// ... (p2pContractAddress and p2pAbi remain the same) ...
+const p2pContractAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
 
 const p2pAbi = [
-  // ... (keep your event ABI the same)
   {
     type: "event",
     name: "MarketCreated",
@@ -35,20 +34,15 @@ export function MarketList() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 2. Get the connected account's chain
   const { chain } = useAccount();
-
-  // 3. Explicitly get the client for the connected chain OR foundry if disconnected
   const client = usePublicClient({
-    chainId: chain?.id ?? foundry.id, // Use connected chain or default to foundry
+    chainId: chain?.id ?? foundry.id,
   });
 
-  // --- Fetch historical events ---
+  // ... (useEffect and useWatchContractEvent hooks remain exactly the same) ...
+
   useEffect(() => {
-    // Ensure we have a client configured for the correct chain (Anvil)
     if (!client || client.chain.id !== foundry.id) {
-      // Don't fetch if client is not ready or not on Anvil
-      // You could set an error message here if needed
       if (client) {
         console.warn(
           `Client chain ID is ${client.chain.id}, expected ${foundry.id}. Waiting for connection to Anvil.`
@@ -59,13 +53,13 @@ export function MarketList() {
       } else {
         console.warn("Public client not available yet.");
       }
-      setIsLoading(false); // Stop loading indicator
+      setIsLoading(false);
       return;
     }
 
     const fetchLogs = async () => {
       setIsLoading(true);
-      setError(null); // Clear previous errors
+      setError(null);
       try {
         console.log(
           `Fetching historical market logs from chain ${client.chain.id}...`
@@ -73,8 +67,7 @@ export function MarketList() {
         const logs = await client.getLogs({
           address: p2pContractAddress,
           event: p2pAbi[0],
-          // 4. Use numberToHex for block numbers in RPC calls
-          fromBlock: 0n, // Explicitly format as hex string "0x0"
+          fromBlock: 0n,
           toBlock: "latest",
         });
 
@@ -97,20 +90,16 @@ export function MarketList() {
     };
 
     fetchLogs();
-    // 5. Re-run when the client (specifically its chain ID) changes
   }, [client]);
 
-  // --- Listen for new events ---
   useWatchContractEvent({
-    // Only watch if connected to the correct chain
-    chainId: foundry.id, // Ensure watcher is attached to Anvil
+    chainId: foundry.id,
     address: p2pContractAddress,
     abi: p2pAbi,
     eventName: "MarketCreated",
     onLogs(logs) {
       console.log("New market created!", logs);
       for (const log of logs) {
-        // Ensure log has args before proceeding
         if (!log.args) {
           console.warn("Received log without args:", log);
           continue;
@@ -140,20 +129,40 @@ export function MarketList() {
 
   return (
     <div>
-      <h3>Available Markets</h3>
+      <h3>Available Markets (Click to View)</h3>
       {error && <p style={{ color: "red" }}>{error}</p>}
       {markets.length === 0 && !error ? (
         <p>No markets created yet on the Anvil network.</p>
       ) : (
         <ul>
           {markets.map((market) => (
-            <li
+            // 2. Wrap list item in a Link
+            <Link
               key={market.marketId}
-              style={{ fontFamily: "monospace", fontSize: "12px" }}
+              // 3. Pass marketId, token0, and token1 in the URL
+              href={`/market/${market.marketId}?token0=${market.token0}&token1=${market.token1}`}
+              style={{
+                textDecoration: "none",
+                color: "inherit",
+                cursor: "pointer",
+              }}
             >
-              <strong>Market ID:</strong> {market.marketId} |{" "}
-              <strong>Pair:</strong> {market.token0} / {market.token1}
-            </li>
+              <li
+                style={{
+                  fontFamily: "monospace",
+                  fontSize: "12px",
+                  padding: "8px",
+                  border: "1px solid #333",
+                  marginBottom: "5px",
+                  borderRadius: "4px",
+                }}
+              >
+                <strong>Market ID:</strong> {market.marketId.substring(0, 10)}
+                ...
+                <br />
+                <strong>Pair:</strong> {market.token0} / {market.token1}
+              </li>
+            </Link>
           ))}
         </ul>
       )}

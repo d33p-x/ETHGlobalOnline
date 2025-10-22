@@ -1,3 +1,4 @@
+// src/app/FillOrderForm.tsx
 "use client";
 import { foundry } from "wagmi/chains";
 import { useState, useEffect } from "react";
@@ -36,28 +37,38 @@ const p2pAbi = [
   },
 ] as const;
 
-// --- Hardcoded Decimals ---
-const tokenDecimalsMap: Record<Address, number> = {
-  "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0": 6, // USDC
-  "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9": 18, // PEPE
-  "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9": 18, // WETH
+// --- Hardcoded Token Info ---
+type TokenInfo = { decimals: number; symbol: string };
+
+const tokenInfoMap: Record<Address, TokenInfo> = {
+  "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0": { decimals: 6, symbol: "USDC" },
+  "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9": {
+    decimals: 18,
+    symbol: "PEPE",
+  },
+  "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9": {
+    decimals: 18,
+    symbol: "WETH",
+  },
 };
 
-export function FillOrderForm() {
+export function FillOrderForm({
+  defaultToken0,
+  defaultToken1,
+}: {
+  defaultToken0: Address;
+  defaultToken1: Address;
+}) {
   const { address: userAddress, isConnected, chain } = useAccount();
 
   // --- Form State ---
-  const [token0, setToken0] = useState<Address>(
-    "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9" // Default WETH
-  );
-  const [token1, setToken1] = useState<Address>(
-    "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0" // Default USDC
-  );
   const [amount1, setAmount1] = useState("");
   const [needsApproval, setNeedsApproval] = useState(false);
 
-  // --- Get Token 1 Decimals ---
-  const token1Decimals = tokenDecimalsMap[token1] ?? 18;
+  // --- Props ---
+  const token0 = defaultToken0;
+  const token1 = defaultToken1;
+  const token1Decimals = tokenInfoMap[token1]?.decimals ?? 18;
 
   // --- Get User Balance ---
   const {
@@ -230,7 +241,7 @@ export function FillOrderForm() {
 
   return (
     <form onSubmit={needsApproval ? handleApprove : handleFillOrder}>
-      <h3>Fill Order</h3>
+      <h3>Fill Order (Buy {tokenInfoMap[token0]?.symbol ?? "Token"})</h3>
       <div
         style={{
           marginBottom: "10px",
@@ -251,33 +262,9 @@ export function FillOrderForm() {
           <br />
           4. You may need to click "Approve" first before filling the order.
           <br />
-          5. The contract will fill orders at current oracle prices with a
-          0.01% buyer fee and 0.005% seller bonus.
+          5. The contract will fill orders at current oracle prices with a 0.01%
+          buyer fee and 0.005% seller bonus.
         </small>
-      </div>
-      <div>
-        <label>
-          Token to Receive (token0):
-          <input
-            type="text"
-            value={token0}
-            onChange={(e) => setToken0(e.target.value as Address)}
-            placeholder="0x... (e.g., WETH address)"
-            style={{ width: "400px" }}
-          />
-        </label>
-      </div>
-      <div>
-        <label>
-          Token to Spend (token1):
-          <input
-            type="text"
-            value={token1}
-            onChange={(e) => setToken1(e.target.value as Address)}
-            placeholder="0x... (e.g., USDC address)"
-            style={{ width: "400px" }}
-          />
-        </label>
       </div>
       <div>
         <label>
@@ -299,7 +286,9 @@ export function FillOrderForm() {
               : balanceError
                 ? `Error: ${balanceError.message}`
                 : balanceData
-                  ? `${formatUnits(balanceData.value, balanceData.decimals)} ${balanceData.symbol}`
+                  ? `${formatUnits(balanceData.value, balanceData.decimals)} ${
+                      balanceData.symbol
+                    }`
                   : "N/A"}
           </span>
         )}
