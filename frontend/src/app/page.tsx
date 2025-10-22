@@ -7,6 +7,7 @@ import { FillOrderForm } from "./FillOrderForm";
 import { MarketList } from "./MarketList";
 import { Debug } from "./Debug";
 import { OrderList } from "./OrderList";
+import { CancelReduceOrderForm } from "./CancelReduceOrderForm";
 
 function App() {
   const account = useAccount();
@@ -58,6 +59,7 @@ function App() {
       <hr />
       <FillOrderForm />
       <hr />
+      <CancelReduceOrderForm />
     </>
   );
 }

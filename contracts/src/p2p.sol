@@ -208,7 +208,7 @@ contract P2P is ReentrancyGuard {
             _amount0Close
         );
     }
-    // @audit create fillOrderExactAmountOut
+    // @todo create fillOrderExactAmountOut
     function fillOrderExactAmountIn(
         bytes[] calldata priceUpdate,
         address _token0,
@@ -266,7 +266,7 @@ contract P2P is ReentrancyGuard {
         uint256 amount0FilledTotal = 0;
         uint256 amount1SpentOnSellers = 0;
         uint256 currentOrderId = market.headId;
-        // @audit add loop limiter
+        // @todo add loop limiter
         while (amount0FilledTotal < amount0Target && currentOrderId != 0) {
             Order storage order = market.orders[currentOrderId];
             QueueNode storage queueNode = market.queue[currentOrderId];
