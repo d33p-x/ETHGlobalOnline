@@ -1,7 +1,6 @@
 // frontend/src/app/OrderList.tsx
 "use client";
 
-// 1. Import useState
 import { useEffect, useState } from "react";
 import { usePublicClient, useWatchContractEvent } from "wagmi";
 import { foundry } from "wagmi/chains"; // Your chain config
@@ -12,7 +11,6 @@ const p2pContractAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"; // Ensu
 
 // ABI including ONLY the order-related events
 const p2pOrderEventsAbi = [
-  // ... (ABI remains the same)
   {
     type: "event",
     name: "OrderCreated",
@@ -72,24 +70,20 @@ type Order = {
 // Map to store orders, keyed by orderId
 type OrderMap = Map<bigint, Order>;
 
-// 2. Remove all props
 export function OrderList() {
-  // 3. Add internal state for marketId, orders, loading, and error
   const [marketId, setMarketId] = useState("");
   const [orders, setOrders] = useState<OrderMap>(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 4. Hardcode decimals for now, since props were removed
   const decimals0 = 18;
 
-  const client = usePublicClient({ chainId: foundry.id }); // Assuming Anvil
+  const client = usePublicClient({ chainId: foundry.id });
 
   // --- Fetch historical events for the selected market ---
   useEffect(() => {
-    // 5. Check for marketId from state
     if (!client || !marketId) {
-      setOrders(new Map()); // Clear orders if no market selected
+      setOrders(new Map());
       setIsLoading(false);
       return;
     }
@@ -111,7 +105,6 @@ export function OrderList() {
         });
         console.log(`Found ${createdLogs.length} OrderCreated logs`);
 
-        // ... (rest of your log fetching and processing logic remains the same)
         // 2. Fetch OrderReducedOrCancelled events
         const reducedLogs = await client.getLogs({
           address: p2pContractAddress,
@@ -141,16 +134,33 @@ export function OrderList() {
 
         // Process creations first
         for (const log of createdLogs) {
-          if (log.args.orderId && log.args.maker) {
-            initialOrders.set(log.args.orderId, {
-              orderId: log.args.orderId,
-              maker: log.args.maker,
-              token0: log.args.token0!,
-              token1: log.args.token1!,
-              initialAmount0: log.args.amount0!,
-              remainingAmount0: log.args.amount0!, // Start with full amount
-              maxPrice: log.args.maxPrice!,
-              minPrice: log.args.minPrice!,
+          const {
+            orderId,
+            maker,
+            token0,
+            token1,
+            amount0,
+            maxPrice,
+            minPrice,
+          } = log.args;
+          if (
+            orderId !== undefined &&
+            maker &&
+            token0 &&
+            token1 &&
+            amount0 !== undefined &&
+            maxPrice !== undefined &&
+            minPrice !== undefined
+          ) {
+            initialOrders.set(orderId, {
+              orderId: orderId,
+              maker: maker,
+              token0: token0,
+              token1: token1,
+              initialAmount0: amount0,
+              remainingAmount0: amount0, // Start with full amount
+              maxPrice: maxPrice,
+              minPrice: minPrice,
             });
           }
         }
@@ -159,7 +169,11 @@ export function OrderList() {
         for (const log of reducedLogs) {
           const orderId = log.args.orderId;
           const amountClosed = log.args.amount0Closed;
-          if (orderId && amountClosed && initialOrders.has(orderId)) {
+          if (
+            orderId !== undefined &&
+            amountClosed !== undefined &&
+            initialOrders.has(orderId)
+          ) {
             const order = initialOrders.get(orderId)!;
             if (order.remainingAmount0 >= amountClosed) {
               order.remainingAmount0 -= amountClosed;
@@ -169,7 +183,6 @@ export function OrderList() {
               );
               order.remainingAmount0 = 0n; // Set to zero if discrepancy
             }
-            // If remaining is zero after reduction, remove it (or mark as cancelled)
             if (order.remainingAmount0 === 0n) {
               initialOrders.delete(orderId);
             }
@@ -180,7 +193,11 @@ export function OrderList() {
         for (const log of filledLogs) {
           const orderId = log.args.orderId;
           const amountFilled = log.args.amount0Filled;
-          if (orderId && amountFilled && initialOrders.has(orderId)) {
+          if (
+            orderId !== undefined &&
+            amountFilled !== undefined &&
+            initialOrders.has(orderId)
+          ) {
             const order = initialOrders.get(orderId)!;
             if (order.remainingAmount0 >= amountFilled) {
               order.remainingAmount0 -= amountFilled;
@@ -190,7 +207,6 @@ export function OrderList() {
               );
               order.remainingAmount0 = 0n; // Set to zero if discrepancy
             }
-            // If remaining is zero after fill, remove it
             if (order.remainingAmount0 === 0n) {
               initialOrders.delete(orderId);
             }
@@ -209,17 +225,170 @@ export function OrderList() {
     };
 
     fetchOrderLogs();
-    // Refetch when the marketId (from state) changes
   }, [client, marketId]);
 
-  // --- TODO: Add useWatchContractEvent hooks here ---
-  // ...
+  // --- START: Add useWatchContractEvent hooks here ---
+
+  /**
+   * Watch for new OrderCreated events
+   */
+  useWatchContractEvent({
+    address: p2pContractAddress,
+    abi: p2pOrderEventsAbi,
+    eventName: "OrderCreated",
+    args: {
+      marketId: marketId as `0x${string}`,
+    },
+    enabled: !!marketId, // Only watch if marketId is set
+    onLogs(logs) {
+      console.log("New OrderCreated event(s) detected:", logs);
+      setOrders((prevOrders) => {
+        // Use a new Map based on previous state for immutability
+        const newOrders = new Map(prevOrders);
+        for (const log of logs) {
+          const {
+            orderId,
+            maker,
+            token0,
+            token1,
+            amount0,
+            maxPrice,
+            minPrice,
+          } = log.args;
+
+          if (
+            orderId !== undefined &&
+            maker &&
+            token0 &&
+            token1 &&
+            amount0 !== undefined &&
+            maxPrice !== undefined &&
+            minPrice !== undefined
+          ) {
+            // Add the new order to the map
+            newOrders.set(orderId, {
+              orderId,
+              maker,
+              token0,
+              token1,
+              initialAmount0: amount0,
+              remainingAmount0: amount0, // New order starts with full amount
+              maxPrice,
+              minPrice,
+            });
+          }
+        }
+        return newOrders; // Return the new state
+      });
+    },
+  });
+
+  /**
+   * Watch for new OrderReducedOrCancelled events
+   */
+  useWatchContractEvent({
+    address: p2pContractAddress,
+    abi: p2pOrderEventsAbi,
+    eventName: "OrderReducedOrCancelled",
+    args: {
+      marketId: marketId as `0x${string}`,
+    },
+    enabled: !!marketId,
+    onLogs(logs) {
+      console.log("New OrderReducedOrCancelled event(s) detected:", logs);
+      setOrders((prevOrders) => {
+        const newOrders = new Map(prevOrders);
+        for (const log of logs) {
+          const { orderId, amount0Closed } = log.args;
+
+          if (
+            orderId !== undefined &&
+            amount0Closed !== undefined &&
+            newOrders.has(orderId)
+          ) {
+            const existingOrder = newOrders.get(orderId)!;
+            // Create a *new* order object to ensure state immutability
+            const updatedOrder = { ...existingOrder };
+
+            if (updatedOrder.remainingAmount0 >= amount0Closed) {
+              updatedOrder.remainingAmount0 -= amount0Closed;
+            } else {
+              console.warn(
+                `Live Order ${orderId}: amountClosed ${amount0Closed} > remaining ${updatedOrder.remainingAmount0}`
+              );
+              updatedOrder.remainingAmount0 = 0n;
+            }
+
+            // If remaining amount is 0, remove the order from the list
+            if (updatedOrder.remainingAmount0 === 0n) {
+              newOrders.delete(orderId);
+            } else {
+              // Otherwise, update the map with the modified order
+              newOrders.set(orderId, updatedOrder);
+            }
+          }
+        }
+        return newOrders;
+      });
+    },
+  });
+
+  /**
+   * Watch for new OrderFilled events
+   */
+  useWatchContractEvent({
+    address: p2pContractAddress,
+    abi: p2pOrderEventsAbi,
+    eventName: "OrderFilled",
+    args: {
+      marketId: marketId as `0x${string}`,
+    },
+    enabled: !!marketId,
+    onLogs(logs) {
+      console.log("New OrderFilled event(s) detected:", logs);
+      setOrders((prevOrders) => {
+        const newOrders = new Map(prevOrders);
+        for (const log of logs) {
+          const { orderId, amount0Filled } = log.args;
+
+          if (
+            orderId !== undefined &&
+            amount0Filled !== undefined &&
+            newOrders.has(orderId)
+          ) {
+            const existingOrder = newOrders.get(orderId)!;
+            // Create a *new* order object
+            const updatedOrder = { ...existingOrder };
+
+            if (updatedOrder.remainingAmount0 >= amount0Filled) {
+              updatedOrder.remainingAmount0 -= amount0Filled;
+            } else {
+              console.warn(
+                `Live Order ${orderId}: amountFilled ${amount0Filled} > remaining ${updatedOrder.remainingAmount0}`
+              );
+              updatedOrder.remainingAmount0 = 0n;
+            }
+
+            // If remaining amount is 0, remove the order
+            if (updatedOrder.remainingAmount0 === 0n) {
+              newOrders.delete(orderId);
+            } else {
+              // Otherwise, update it
+              newOrders.set(orderId, updatedOrder);
+            }
+          }
+        }
+        return newOrders;
+      });
+    },
+  });
+
+  // --- END: Add useWatchContractEvent hooks here ---
 
   const orderArray = Array.from(orders.values());
 
   return (
     <div>
-      {/* 6. Add the input field here */}
       <h3>View Orders for Market</h3>
       <label>
         Enter Market ID:
@@ -232,7 +401,6 @@ export function OrderList() {
         />
       </label>
 
-      {/* 7. Update conditional rendering logic */}
       {!marketId ? (
         <p>Enter a Market ID above to view orders.</p>
       ) : isLoading ? (
@@ -243,13 +411,12 @@ export function OrderList() {
         <p>No active orders found for this market.</p>
       ) : (
         <>
-          <h4>Orders for Market {marketId.substring(0, 10)}...</h4>
+          <h4>Orders for Market {marketId.substring(0, 10)}... (Live)</h4>
           <table border={1} style={{ fontSize: "12px", width: "100%" }}>
             <thead>
               <tr>
                 <th>Order ID</th>
                 <th>Maker</th>
-                {/* 8. Use hardcoded decimals */}
                 <th>Remaining Amount</th>
                 <th>Min Price (USD)</th>
                 <th>Max Price (USD)</th>
@@ -260,7 +427,6 @@ export function OrderList() {
                 <tr key={order.orderId.toString()}>
                   <td>{order.orderId.toString()}</td>
                   <td>{order.maker.substring(0, 10)}...</td>
-                  {/* 8. Use hardcoded decimals */}
                   <td>{formatUnits(order.remainingAmount0, decimals0)}</td>
                   <td>
                     {order.minPrice > 0n
