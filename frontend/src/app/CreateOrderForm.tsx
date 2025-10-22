@@ -17,6 +17,8 @@ import {
   maxUint256,
 } from "viem";
 import { erc20Abi } from "viem";
+import { tokenInfoMap } from "@/app/tokenConfig"; // <-- 1. Import
+import { type TokenInfo } from "@/app/tokenConfig"; // (Optional, but good practice)
 
 // ... (Config and ABI remain the same) ...
 const p2pContractAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
@@ -39,20 +41,9 @@ const p2pAbi = [
 
 // 3. --- Fix for token map ---
 // Define a type for the token info
-type TokenInfo = { decimals: number; symbol: string };
+// type TokenInfo = { decimals: number; symbol: string };
 
 // Update the map type and content
-const tokenInfoMap: Record<Address, TokenInfo> = {
-  "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0": { decimals: 6, symbol: "USDC" },
-  "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9": {
-    decimals: 18,
-    symbol: "PEPE",
-  },
-  "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9": {
-    decimals: 18,
-    symbol: "WETH",
-  },
-};
 
 export function CreateOrderForm({
   defaultToken0,

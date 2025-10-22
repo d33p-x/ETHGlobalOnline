@@ -6,6 +6,7 @@ import { useAccount, usePublicClient, useWatchContractEvent } from "wagmi";
 import { foundry } from "wagmi/chains";
 import { type Address, type Log } from "viem";
 import Link from "next/link"; // <-- 1. Import Link
+import { tokenInfoMap } from "./tokenConfig"; // <-- 1. Import
 
 // ... (p2pContractAddress and p2pAbi remain the same) ...
 const p2pContractAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
@@ -135,35 +136,45 @@ export function MarketList() {
         <p>No markets created yet on the Anvil network.</p>
       ) : (
         <ul>
-          {markets.map((market) => (
-            // 2. Wrap list item in a Link
-            <Link
-              key={market.marketId}
-              // 3. Pass marketId, token0, and token1 in the URL
-              href={`/market/${market.marketId}?token0=${market.token0}&token1=${market.token1}`}
-              style={{
-                textDecoration: "none",
-                color: "inherit",
-                cursor: "pointer",
-              }}
-            >
-              <li
+          {markets.map((market) => {
+            // 2. Look up symbols
+            const symbol0 = tokenInfoMap[market.token0]?.symbol ?? "Token0";
+            const symbol1 = tokenInfoMap[market.token1]?.symbol ?? "Token1";
+
+            return (
+              <Link
+                key={market.marketId}
+                href={`/market/${market.marketId}?token0=${market.token0}&token1=${market.token1}`}
                 style={{
-                  fontFamily: "monospace",
-                  fontSize: "12px",
-                  padding: "8px",
-                  border: "1px solid #333",
-                  marginBottom: "5px",
-                  borderRadius: "4px",
+                  textDecoration: "none",
+                  color: "inherit",
+                  cursor: "pointer",
                 }}
               >
-                <strong>Market ID:</strong> {market.marketId.substring(0, 10)}
-                ...
-                <br />
-                <strong>Pair:</strong> {market.token0} / {market.token1}
-              </li>
-            </Link>
-          ))}
+                <li
+                  style={{
+                    fontFamily: "monospace",
+                    fontSize: "12px",
+                    padding: "8px",
+                    border: "1px solid #333",
+                    marginBottom: "5px",
+                    borderRadius: "4px",
+                  }}
+                >
+                  {/* 3. Display symbols */}
+                  <strong>
+                    Pair: {symbol0} / {symbol1}
+                  </strong>
+                  <br />
+                  <span style={{ fontSize: "10px" }}>
+                    Market ID: {market.marketId.substring(0, 10)}...
+                    <br />
+                    Tokens: {market.token0} / {market.token1}
+                  </span>
+                </li>
+              </Link>
+            );
+          })}
         </ul>
       )}
     </div>
