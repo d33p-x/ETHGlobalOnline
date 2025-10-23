@@ -38,6 +38,12 @@ contract P2P is ReentrancyGuard {
         address indexed taker
     );
 
+    event PriceFeedSet(
+        address indexed tokenAddress,
+        bytes32 indexed priceFeedId,
+        address owner
+    );
+
     struct QueueNode {
         uint256 nextId; //0 if this is the last
         uint256 prevId; //0 if this is the first
@@ -337,8 +343,11 @@ contract P2P is ReentrancyGuard {
             );
             currentOrderId = nextOrderId;
         }
+        if (amount0FilledTotal == 0) {
+            revert("No orders at current price levels available to fill");
+        }
         market.totalLiquidity -= amount0FilledTotal;
-        // @todo this transfers 0 amount if no fill
+
         IERC20Metadata(_token0).transfer(msg.sender, amount0FilledTotal);
         uint256 protocolFee = _amount1 - amount1SpentOnSellers;
         if (protocolFee > 0) {
@@ -365,5 +374,6 @@ contract P2P is ReentrancyGuard {
     ) external {
         require(msg.sender == owner, "Only owner can set price feeds");
         priceFeeds[_tokenAddress] = _priceFeedId;
+        emit PriceFeedSet(_tokenAddress, _priceFeedId, msg.sender);
     }
 }

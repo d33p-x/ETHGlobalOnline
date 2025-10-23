@@ -5,7 +5,7 @@ import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { CreateMarketForm } from "./CreateMarketForm";
 import { MarketList } from "./MarketList";
 import { Debug } from "./Debug";
-
+import { SupportedTokens } from "./SupportedTokens"; // <-- 1. Import
 // Renamed the main component to 'WalletConnect' for clarity
 
 function App() {
@@ -19,7 +19,14 @@ function App() {
       */}
       <MarketList />
       <hr />
-      <CreateMarketForm />
+      <div style={{ display: "flex", gap: "20px" }}>
+        <div style={{ flex: 1 }}>
+          <CreateMarketForm />
+        </div>
+        <div style={{ flex: 1 }}>
+          <SupportedTokens /> {/* <-- 3. Add the new component */}
+        </div>
+      </div>
     </>
   );
 }

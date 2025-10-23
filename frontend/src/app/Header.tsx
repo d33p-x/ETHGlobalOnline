@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAccount, useConnect, useDisconnect } from "wagmi";
 
 function WalletConnect() {
+  // ... (this component remains the same)
   const account = useAccount();
   const { connectors, connect, status, error } = useConnect();
   const { disconnect } = useDisconnect();
@@ -39,6 +40,8 @@ function WalletConnect() {
 }
 
 export function Header() {
+  const { isConnected } = useAccount(); // <-- 1. Get connection status
+
   return (
     <header
       style={{
@@ -46,11 +49,23 @@ export function Header() {
         alignItems: "center",
         padding: "1rem",
         borderBottom: "1px solid #333",
+        gap: "20px", // <-- 2. Add gap for new link
       }}
     >
       <Link href="/" style={{ textDecoration: "none", color: "inherit" }}>
         <h1 style={{ margin: 0, fontSize: "1.5rem" }}>P2P Exchange</h1>
       </Link>
+
+      {/* 3. Add new link */}
+      {isConnected && (
+        <Link
+          href="/my-orders"
+          style={{ textDecoration: "none", color: "inherit" }}
+        >
+          My Orders
+        </Link>
+      )}
+
       <WalletConnect />
     </header>
   );
