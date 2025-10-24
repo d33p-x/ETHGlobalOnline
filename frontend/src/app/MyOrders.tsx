@@ -11,9 +11,10 @@ import {
 import { foundry } from "wagmi/chains";
 import { type Address, type Log, formatUnits, BaseError } from "viem";
 import { tokenInfoMap } from "./tokenConfig";
+import { P2P_CONTRACT_ADDRESS } from "./config";
 
 // --- Config ---
-const p2pContractAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
+
 
 // 2. Add 'cancelOrReduceOrder' ABI
 const p2pAbi = [
@@ -146,7 +147,7 @@ export function MyOrders() {
     try {
       // 1. Fetch all orders CREATED by user
       const createdLogs = await client.getLogs({
-        address: p2pContractAddress,
+        address: P2P_CONTRACT_ADDRESS,
         event: p2pOrderEventsAbi[0], // OrderCreated
         args: {
           maker: address, // <-- Filter by connected user!
@@ -157,7 +158,7 @@ export function MyOrders() {
 
       // 2. Fetch all orders FILLED by user (as taker)
       const filledLogsAsTaker = await client.getLogs({
-        address: p2pContractAddress,
+        address: P2P_CONTRACT_ADDRESS,
         event: p2pOrderEventsAbi[2], // OrderFilled
         args: {
           taker: address, // <-- Filter by connected user!
@@ -198,14 +199,14 @@ export function MyOrders() {
       }
 
       const reducedLogs = await client.getLogs({
-        address: p2pContractAddress,
+        address: P2P_CONTRACT_ADDRESS,
         event: p2pOrderEventsAbi[1], // OrderReducedOrCancelled
         fromBlock: 0n,
         toBlock: "latest",
       });
 
       const filledLogs = await client.getLogs({
-        address: p2pContractAddress,
+        address: P2P_CONTRACT_ADDRESS,
         event: p2pOrderEventsAbi[2], // OrderFilled
         fromBlock: 0n,
         toBlock: "latest",
@@ -257,7 +258,7 @@ export function MyOrders() {
     setCancellingOrderId(order.orderId); // Set loading state for this row
 
     cancelWriteContract({
-      address: p2pContractAddress,
+      address: P2P_CONTRACT_ADDRESS,
       abi: p2pAbi,
       functionName: "cancelOrReduceOrder",
       args: [

@@ -206,12 +206,12 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
     // --- Chart Configuration ---
     const chartOptions: DeepPartial<ChartOptions> = {
       layout: {
-        background: { color: "#1A1A1A" }, // Dark theme
-        textColor: "#DDD",
+        background: { color: "#1a2241" }, // Match site's bg-tertiary
+        textColor: "#cbd5e1", // Match site's text-secondary
       },
       grid: {
-        vertLines: { color: "#444" },
-        horzLines: { color: "#444" },
+        vertLines: { color: "#2d3a5f" }, // Match site's border-color
+        horzLines: { color: "#2d3a5f" }, // Match site's border-color
       },
       timeScale: {
         timeVisible: true,
@@ -238,22 +238,22 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
         // =================================================================
         if (type === "Candlestick") {
           seriesRef.current = chart.addSeries(CandlestickSeries, {
-            upColor: "#26a69a",
-            downColor: "#ef5350",
+            upColor: "#00f5ff", // Neon cyan - cyberpunk up
+            downColor: "#ff0080", // Hot pink - cyberpunk down
             borderVisible: false,
-            wickUpColor: "#26a69a",
-            wickDownColor: "#ef5350",
+            wickUpColor: "#00f5ff",
+            wickDownColor: "#ff0080",
           });
         } else if (type === "Line") {
           seriesRef.current = chart.addSeries(LineSeries, {
-            color: "#2962FF",
+            color: "#60a5fa", // Match site's accent-secondary
             lineWidth: 2,
           });
         } else if (type === "Area") {
           seriesRef.current = chart.addSeries(AreaSeries, {
-            lineColor: "#2962FF",
-            topColor: "rgba(41, 98, 255, 0.4)",
-            bottomColor: "rgba(41, 98, 255, 0)",
+            lineColor: "#60a5fa", // Match site's accent-secondary
+            topColor: "rgba(96, 165, 250, 0.3)", // accent-secondary with opacity
+            bottomColor: "rgba(96, 165, 250, 0)",
             lineWidth: 2,
           });
         } else {
@@ -408,15 +408,15 @@ const styles = {
     display: "flex",
     gap: "5px",
     zIndex: 20,
-    backgroundColor: "rgba(26, 26, 26, 0.9)",
+    backgroundColor: "rgba(30, 40, 73, 0.95)", // Match site's bg-card with opacity
     padding: "5px",
     borderRadius: "5px",
-    border: "1px solid #444",
+    border: "1px solid #2d3a5f", // Match site's border-color
   } as React.CSSProperties,
   intervalButton: {
-    backgroundColor: "#2A2A2A",
-    color: "#DDD",
-    border: "1px solid #444",
+    backgroundColor: "#1a2241", // Match site's bg-tertiary
+    color: "#cbd5e1", // Match site's text-secondary
+    border: "1px solid #2d3a5f", // Match site's border-color
     borderRadius: "3px",
     padding: "5px 12px",
     fontSize: "12px",
@@ -425,19 +425,20 @@ const styles = {
     transition: "all 0.2s ease",
   } as React.CSSProperties,
   intervalButtonActive: {
-    backgroundColor: "#2962FF",
+    backgroundColor: "#3b82f6", // Match site's accent-primary
     color: "white",
-    borderColor: "#2962FF",
+    borderColor: "#3b82f6",
   } as React.CSSProperties,
   loadingOverlay: {
     position: "absolute",
     top: "50%",
     left: "50%",
     transform: "translate(-50%, -50%)",
-    color: "white",
-    backgroundColor: "rgba(0,0,0,0.7)",
-    padding: "10px",
+    color: "#f1f5f9", // Match site's text-primary
+    backgroundColor: "rgba(30, 40, 73, 0.95)", // Match site's bg-card
+    padding: "10px 20px",
     borderRadius: "5px",
+    border: "1px solid #2d3a5f", // Match site's border-color
     zIndex: 10,
   } as React.CSSProperties,
   errorOverlay: {
@@ -445,10 +446,11 @@ const styles = {
     top: "50%",
     left: "50%",
     transform: "translate(-50%, -50%)",
-    color: "red",
-    backgroundColor: "rgba(0,0,0,0.7)",
-    padding: "10px",
+    color: "#ef4444", // Match site's error color
+    backgroundColor: "rgba(30, 40, 73, 0.95)", // Match site's bg-card
+    padding: "10px 20px",
     borderRadius: "5px",
+    border: "1px solid #ef4444",
     zIndex: 10,
   } as React.CSSProperties,
 };

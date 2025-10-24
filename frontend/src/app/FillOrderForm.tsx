@@ -17,11 +17,9 @@ import {
   maxUint256,
 } from "viem";
 import { erc20Abi } from "viem";
-import { tokenInfoMap } from "@/app/tokenConfig"; // <-- 1. Import
-import { type TokenInfo } from "@/app/tokenConfig"; // (Optional)
-
-// --- Config ---
-const p2pContractAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
+import { tokenInfoMap } from "@/app/tokenConfig";
+import { type TokenInfo } from "@/app/tokenConfig";
+import { P2P_CONTRACT_ADDRESS } from "./config";
 
 // ABI for P2P fillOrderExactAmountIn function
 const p2pAbi = [
@@ -94,8 +92,8 @@ export function FillOrderForm({
     abi: erc20Abi,
     functionName: "allowance",
     args:
-      userAddress && p2pContractAddress
-        ? [userAddress, p2pContractAddress]
+      userAddress && P2P_CONTRACT_ADDRESS
+        ? [userAddress, P2P_CONTRACT_ADDRESS]
         : undefined,
     chainId: foundry.id,
     query: {
@@ -104,7 +102,7 @@ export function FillOrderForm({
         !!userAddress &&
         !!token1 &&
         token1 !== "0x" &&
-        !!p2pContractAddress &&
+        !!P2P_CONTRACT_ADDRESS &&
         !!amount1 &&
         chain?.id === foundry.id,
     },
@@ -182,7 +180,7 @@ export function FillOrderForm({
     amount1,
     token1Decimals,
     userAddress,
-    p2pContractAddress,
+    P2P_CONTRACT_ADDRESS,
     needsApproval,
   ]);
 
@@ -202,7 +200,7 @@ export function FillOrderForm({
       address: token1,
       abi: erc20Abi,
       functionName: "approve",
-      args: [p2pContractAddress, maxUint256],
+      args: [P2P_CONTRACT_ADDRESS, maxUint256],
     });
   };
 
@@ -218,7 +216,7 @@ export function FillOrderForm({
       const priceUpdateArray: `0x${string}`[] = [];
 
       fillOrderWriteContract({
-        address: p2pContractAddress,
+        address: P2P_CONTRACT_ADDRESS,
         abi: p2pAbi,
         functionName: "fillOrderExactAmountIn",
         args: [priceUpdateArray, token0, token1, formattedAmount1],

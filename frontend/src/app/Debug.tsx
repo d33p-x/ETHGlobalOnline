@@ -2,8 +2,9 @@
 
 import { useEffect } from "react";
 import { usePublicClient } from "wagmi";
+import { P2P_CONTRACT_ADDRESS } from "./config";
 
-const p2pContractAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
+
 
 export function Debug() {
   const client = usePublicClient();
@@ -13,9 +14,9 @@ export function Debug() {
 
     const checkDeployment = async () => {
       try {
-        const code = await client.getBytecode({ address: p2pContractAddress });
+        const code = await client.getBytecode({ address: P2P_CONTRACT_ADDRESS });
         console.log("=== DEBUG INFO ===");
-        console.log("P2P Contract Address:", p2pContractAddress);
+        console.log("P2P Contract Address:", P2P_CONTRACT_ADDRESS);
         console.log("Contract has code:", code ? "YES" : "NO");
         console.log("Contract code length:", code?.length || 0);
 

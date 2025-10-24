@@ -5,9 +5,10 @@ import { useEffect, useState } from "react";
 import { usePublicClient, useWatchContractEvent } from "wagmi";
 import { foundry } from "wagmi/chains"; // Your chain config
 import { type Address, type Log, formatUnits } from "viem";
+import { P2P_CONTRACT_ADDRESS } from "./config";
 
 // --- Config ---
-const p2pContractAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"; // Ensure this is correct!
+ // Ensure this is correct!
 
 // ABI including ONLY the order-related events
 const p2pOrderEventsAbi = [
@@ -104,7 +105,7 @@ export function OrderList({ marketId }: { marketId: string }) {
       try {
         // 1. Fetch OrderCreated events
         const createdLogs = await client.getLogs({
-          address: p2pContractAddress,
+          address: P2P_CONTRACT_ADDRESS,
           event: p2pOrderEventsAbi[0], // OrderCreated
           args: {
             marketId: marketId as `0x${string}`, // Filter by marketId
@@ -116,7 +117,7 @@ export function OrderList({ marketId }: { marketId: string }) {
 
         // 2. Fetch OrderReducedOrCancelled events
         const reducedLogs = await client.getLogs({
-          address: p2pContractAddress,
+          address: P2P_CONTRACT_ADDRESS,
           event: p2pOrderEventsAbi[1], // OrderReducedOrCancelled
           args: {
             marketId: marketId as `0x${string}`, // Filter by marketId
@@ -128,7 +129,7 @@ export function OrderList({ marketId }: { marketId: string }) {
 
         // 3. Fetch OrderFilled events
         const filledLogs = await client.getLogs({
-          address: p2pContractAddress,
+          address: P2P_CONTRACT_ADDRESS,
           event: p2pOrderEventsAbi[2], // OrderFilled
           args: {
             marketId: marketId as `0x${string}`, // Filter by marketId
@@ -242,7 +243,7 @@ export function OrderList({ marketId }: { marketId: string }) {
    * Watch for new OrderCreated events
    */
   useWatchContractEvent({
-    address: p2pContractAddress,
+    address: P2P_CONTRACT_ADDRESS,
     abi: p2pOrderEventsAbi,
     eventName: "OrderCreated",
     args: {
@@ -296,7 +297,7 @@ export function OrderList({ marketId }: { marketId: string }) {
    * Watch for new OrderReducedOrCancelled events
    */
   useWatchContractEvent({
-    address: p2pContractAddress,
+    address: P2P_CONTRACT_ADDRESS,
     abi: p2pOrderEventsAbi,
     eventName: "OrderReducedOrCancelled",
     args: {
@@ -346,7 +347,7 @@ export function OrderList({ marketId }: { marketId: string }) {
    * Watch for new OrderFilled events
    */
   useWatchContractEvent({
-    address: p2pContractAddress,
+    address: P2P_CONTRACT_ADDRESS,
     abi: p2pOrderEventsAbi,
     eventName: "OrderFilled",
     args: {

@@ -5,11 +5,12 @@ import { useEffect, useState } from "react";
 import { useAccount, usePublicClient, useWatchContractEvent } from "wagmi";
 import { foundry } from "wagmi/chains";
 import { type Address, type Log } from "viem";
+import { P2P_CONTRACT_ADDRESS } from "./config";
 import Link from "next/link"; // <-- 1. Import Link
 import { tokenInfoMap } from "./tokenConfig"; // <-- 1. Import
 
-// ... (p2pContractAddress and p2pAbi remain the same) ...
-const p2pContractAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
+// ... (P2P_CONTRACT_ADDRESS and p2pAbi remain the same) ...
+
 
 const p2pAbi = [
   {
@@ -66,7 +67,7 @@ export function MarketList() {
           `Fetching historical market logs from chain ${client.chain.id}...`
         );
         const logs = await client.getLogs({
-          address: p2pContractAddress,
+          address: P2P_CONTRACT_ADDRESS,
           event: p2pAbi[0],
           fromBlock: 0n,
           toBlock: "latest",
@@ -95,7 +96,7 @@ export function MarketList() {
 
   useWatchContractEvent({
     chainId: foundry.id,
-    address: p2pContractAddress,
+    address: P2P_CONTRACT_ADDRESS,
     abi: p2pAbi,
     eventName: "MarketCreated",
     onLogs(logs) {
@@ -129,13 +130,49 @@ export function MarketList() {
   }
 
   return (
-    <div>
-      <h3>Available Markets (Click to View)</h3>
+    <div style={{
+      background: "var(--bg-card)",
+      padding: "2rem",
+      borderRadius: "1rem",
+      border: "1px solid var(--border-color)",
+      boxShadow: "var(--shadow-lg)"
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1.5rem" }}>
+        <span style={{ fontSize: "1.5rem" }}>💹</span>
+        <h3 style={{ margin: 0 }}>Available Markets</h3>
+        {markets.length > 0 && (
+          <span style={{
+            marginLeft: "auto",
+            padding: "0.25rem 0.75rem",
+            background: "rgba(59, 130, 246, 0.2)",
+            border: "1px solid var(--accent-primary)",
+            borderRadius: "9999px",
+            fontSize: "0.75rem",
+            fontWeight: "600",
+            color: "var(--accent-secondary)"
+          }}>
+            {markets.length} {markets.length === 1 ? "Market" : "Markets"}
+          </span>
+        )}
+      </div>
+
       {error && <p className="error-message">{error}</p>}
       {markets.length === 0 && !error ? (
-        <p>No markets created yet on the Anvil network.</p>
+        <div style={{
+          textAlign: "center",
+          padding: "3rem 1rem",
+          color: "var(--text-muted)"
+        }}>
+          <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>📭</div>
+          <p>No markets created yet</p>
+          <p style={{ fontSize: "0.875rem" }}>Create your first market below to get started</p>
+        </div>
       ) : (
-        <ul>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+          gap: "1rem"
+        }}>
           {markets.map((market) => {
             // 2. Look up symbols
             const symbol0 = tokenInfoMap[market.token0]?.symbol ?? "Token0";
@@ -147,22 +184,48 @@ export function MarketList() {
                 href={`/market/${market.marketId}?token0=${market.token0}&token1=${market.token1}`}
                 className="market-link"
               >
-                <li className="market-item">
-                  {/* 3. Display symbols */}
-                  <strong>
-                    Pair: {symbol0} / {symbol1}
-                  </strong>
-                  <br />
-                  <span className="market-details-small">
-                    Market ID: {market.marketId.substring(0, 10)}...
-                    <br />
-                    Tokens: {market.token0} / {market.token1}
-                  </span>
-                </li>
+                <div style={{
+                  padding: "1.5rem",
+                  background: "var(--bg-tertiary)",
+                  border: "1px solid var(--border-color)",
+                  borderRadius: "0.75rem",
+                  transition: "all 0.3s ease",
+                  cursor: "pointer"
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "var(--accent-primary)";
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.boxShadow = "var(--shadow-md)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "var(--border-color)";
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "none";
+                }}>
+                  <div style={{
+                    fontSize: "1.25rem",
+                    fontWeight: "700",
+                    marginBottom: "0.75rem",
+                    background: "linear-gradient(135deg, #00f5ff 0%, #ff0080 100%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    backgroundClip: "text"
+                  }}>
+                    {symbol0} / {symbol1}
+                  </div>
+                  <div style={{
+                    fontSize: "0.75rem",
+                    color: "var(--text-muted)",
+                    fontFamily: "monospace",
+                    wordBreak: "break-all"
+                  }}>
+                    {market.marketId.substring(0, 16)}...
+                  </div>
+                </div>
               </Link>
             );
           })}
-        </ul>
+        </div>
       )}
     </div>
   );

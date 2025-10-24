@@ -6,9 +6,10 @@ import { usePublicClient } from "wagmi";
 import { foundry } from "wagmi/chains";
 import { type Address, erc20Abi } from "viem";
 import { useReadContract } from "wagmi";
+import { P2P_CONTRACT_ADDRESS } from "./config";
 
 // --- Config ---
-const p2pContractAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"; // Your contract
+ // Your contract
 
 // ABI for the new event
 const p2pAbi = [
@@ -71,7 +72,7 @@ export function SupportedTokens() {
       setError(null);
       try {
         const logs = await client.getLogs({
-          address: p2pContractAddress,
+          address: P2P_CONTRACT_ADDRESS,
           event: p2pAbi[0], // PriceFeedSet
           fromBlock: 0n,
           toBlock: "latest",
@@ -105,14 +106,35 @@ export function SupportedTokens() {
 
   return (
     <div>
-      <h3>Supported Tokens</h3>
-      <p>Tokens with a price feed set in the contract.</p>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem" }}>
+        <span style={{ fontSize: "1.5rem" }}>🪙</span>
+        <h3 style={{ margin: 0 }}>Supported Tokens</h3>
+      </div>
+      <p style={{ fontSize: "0.875rem", color: "var(--text-muted)", marginBottom: "1.5rem" }}>
+        Tokens with price feeds configured
+      </p>
       {isLoading ? (
-        <p>Loading tokens...</p>
+        <div style={{
+          textAlign: "center",
+          padding: "2rem",
+          color: "var(--text-muted)"
+        }}>
+          <div className="loading" style={{ fontSize: "2rem" }}>⏳</div>
+          <p>Loading tokens...</p>
+        </div>
       ) : error ? (
         <p className="error-message">{error}</p>
       ) : tokenArray.length === 0 ? (
-        <p>No price feeds have been set yet.</p>
+        <div style={{
+          textAlign: "center",
+          padding: "2rem 1rem",
+          color: "var(--text-muted)",
+          background: "var(--bg-tertiary)",
+          borderRadius: "0.5rem",
+          border: "1px dashed var(--border-color)"
+        }}>
+          <p>No price feeds configured yet</p>
+        </div>
       ) : (
         <ul className="token-list">
           {tokenArray.map((info) => (

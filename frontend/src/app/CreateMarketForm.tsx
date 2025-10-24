@@ -3,10 +3,7 @@
 import { useState } from "react";
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { type Address, BaseError } from "viem";
-
-// --- Contract Address ---
-// ⚠️ UPDATE THIS with your deployed P2P.sol contract address
-const p2pContractAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
+import { P2P_CONTRACT_ADDRESS, TOKEN_ADDRESSES } from "./config";
 
 // --- ABI for createMarket ---
 // The minimal ABI just for the createMarket function
@@ -25,13 +22,9 @@ const p2pAbi = [
 
 export function CreateMarketForm() {
   // --- Form State ---
-  // Default to WETH and USDC from deploy script
-  const [token0, setToken0] = useState<Address>(
-    "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9"
-  ); // WETH
-  const [token1, setToken1] = useState<Address>(
-    "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0"
-  ); // USDC
+  // Default to WETH and USDC from config
+  const [token0, setToken0] = useState<Address>(TOKEN_ADDRESSES.WETH);
+  const [token1, setToken1] = useState<Address>(TOKEN_ADDRESSES.USDC);
 
   // --- Wagmi Hook ---
   const { writeContract, data: hash, status, error } = useWriteContract();
@@ -46,7 +39,7 @@ export function CreateMarketForm() {
 
     // The arguments are already in the correct format (Address)
     writeContract({
-      address: p2pContractAddress,
+      address: P2P_CONTRACT_ADDRESS,
       abi: p2pAbi,
       functionName: "createMarket",
       args: [token0, token1],
@@ -56,17 +49,6 @@ export function CreateMarketForm() {
   return (
     <form onSubmit={handleSubmit}>
       <h3>Create Market</h3>
-      <div className="instructions-box">
-        <small className="instructions-text">
-          <strong>Instructions:</strong>
-          <br />
-          1. Default addresses are WETH and USDC from deploy script
-          <br />
-          2. You can change to other tokens (USDC, PEPE, or WETH)
-          <br />
-          3. Make sure you're connected to Anvil (Chain ID: 31337)
-        </small>
-      </div>
       <div>
         <label>
           Token 0 (e.g., WETH):

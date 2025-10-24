@@ -56,19 +56,69 @@ export default function MarketPage({
     >
       {/* Header Section */}
       <div style={{ marginBottom: "0.5rem" }}>
-        <h2 style={{ margin: "0 0 0.5rem 0", fontSize: "1.75rem" }}>
-          {symbol0} / {symbol1}
-        </h2>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.5rem" }}>
+          <h2 style={{ margin: 0, fontSize: "1.75rem" }}>
+            {symbol0} / {symbol1}
+          </h2>
+          <div style={{
+            display: "flex",
+            gap: "0.5rem",
+            fontSize: "0.75rem",
+            fontWeight: "600"
+          }}>
+            <span style={{
+              padding: "0.25rem 0.75rem",
+              background: "rgba(16, 185, 129, 0.2)",
+              color: "#10b981",
+              borderRadius: "9999px",
+              border: "1px solid rgba(16, 185, 129, 0.3)"
+            }}>
+              🎯 Zero Slippage
+            </span>
+          </div>
+        </div>
         <p
           style={{
             fontFamily: "monospace",
             fontSize: "0.75rem",
             color: "#888",
-            margin: 0,
+            margin: "0 0 0.75rem 0",
           }}
         >
           Market ID: {marketId}
         </p>
+
+        {/* Fee Info Banner */}
+        <div style={{
+          display: "flex",
+          gap: "0.75rem",
+          padding: "0.75rem 1rem",
+          background: "rgba(59, 130, 246, 0.1)",
+          border: "1px solid rgba(59, 130, 246, 0.2)",
+          borderRadius: "0.5rem",
+          fontSize: "0.875rem"
+        }}>
+          <div style={{ flex: 1 }}>
+            <span style={{ color: "#94a3b8" }}>Maker Bonus: </span>
+            <span style={{ color: "#10b981", fontWeight: "600" }}>+0.05%</span>
+          </div>
+          <div style={{
+            width: "1px",
+            background: "rgba(59, 130, 246, 0.2)"
+          }} />
+          <div style={{ flex: 1 }}>
+            <span style={{ color: "#94a3b8" }}>Taker Fee: </span>
+            <span style={{ color: "#60a5fa", fontWeight: "600" }}>0.10%</span>
+          </div>
+          <div style={{
+            width: "1px",
+            background: "rgba(59, 130, 246, 0.2)"
+          }} />
+          <div style={{ flex: 1 }}>
+            <span style={{ color: "#94a3b8" }}>Net Spread: </span>
+            <span style={{ color: "#cbd5e1", fontWeight: "600" }}>0.05%</span>
+          </div>
+        </div>
       </div>
 
       {/* Main Content Area: Chart | Forms on top, OrderBook below */}

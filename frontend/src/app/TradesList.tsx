@@ -5,9 +5,10 @@ import { useEffect, useState } from "react";
 import { usePublicClient, useWatchContractEvent } from "wagmi";
 import { foundry } from "wagmi/chains";
 import { type Address, formatUnits } from "viem";
+import { P2P_CONTRACT_ADDRESS } from "./config";
 
 // --- Config ---
-const p2pContractAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
+
 
 // ABI for OrderFilled event
 const orderFilledEventAbi = [
@@ -71,7 +72,7 @@ export function TradesList({ marketId }: { marketId: string }) {
       console.log(`Fetching trade logs for marketId: ${marketId}`);
       try {
         const filledLogs = await client.getLogs({
-          address: p2pContractAddress,
+          address: P2P_CONTRACT_ADDRESS,
           event: orderFilledEventAbi[0],
           args: {
             marketId: marketId as `0x${string}`,
@@ -134,7 +135,7 @@ export function TradesList({ marketId }: { marketId: string }) {
 
   // --- Watch for new OrderFilled events ---
   useWatchContractEvent({
-    address: p2pContractAddress,
+    address: P2P_CONTRACT_ADDRESS,
     abi: orderFilledEventAbi,
     eventName: "OrderFilled",
     args: {
