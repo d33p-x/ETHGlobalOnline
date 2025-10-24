@@ -9,8 +9,7 @@ import { tokenInfoMap } from "@/app/tokenConfig";
 import LightweightMarketChart from "@/app/LightweightMarketChart";
 
 // Import your existing components
-import { FillOrderForm } from "@/app/FillOrderForm";
-import { CreateOrderForm } from "@/app/CreateOrderForm";
+import { TradingInterface } from "@/app/TradingInterface";
 import { OrderList } from "@/app/OrderList";
 import { TradesList } from "@/app/TradesList";
 
@@ -157,18 +156,16 @@ export default function MarketPage({
             />
           </div>
 
-          {/* Forms - 33% width, stacked vertically */}
+          {/* Trading Interface - 33% width */}
           <div
             style={{
               minWidth: 320,
               display: "flex",
               flexDirection: "column",
-              gap: "1rem",
               overflow: "auto",
             }}
           >
-            <CreateOrderForm defaultToken0={token0} defaultToken1={token1} />
-            <FillOrderForm defaultToken0={token0} defaultToken1={token1} />
+            <TradingInterface defaultToken0={token0} defaultToken1={token1} />
           </div>
         </div>
 

@@ -5,20 +5,19 @@ import { useState, useEffect } from "react";
 import {
   useAccount,
   useWriteContract,
-  useWaitForTransactionReceipt, // <--- 1. Fixed import
-  useReadContract, // <--- 1. Fixed import
+  useWaitForTransactionReceipt,
+  useReadContract,
   useBalance,
 } from "wagmi";
 import {
   type Address,
   BaseError,
-  parseUnits, // <--- 2. Fixed import
-  formatUnits, // <--- 2. Fixed import
+  parseUnits,
+  formatUnits,
   maxUint256,
 } from "viem";
 import { erc20Abi } from "viem";
 import { tokenInfoMap } from "@/app/tokenConfig";
-import { type TokenInfo } from "@/app/tokenConfig";
 import { P2P_CONTRACT_ADDRESS } from "./config";
 
 const p2pAbi = [
@@ -37,12 +36,6 @@ const p2pAbi = [
   },
 ] as const;
 
-// 3. --- Fix for token map ---
-// Define a type for the token info
-// type TokenInfo = { decimals: number; symbol: string };
-
-// Update the map type and content
-
 export function CreateOrderForm({
   defaultToken0,
   defaultToken1,
@@ -59,7 +52,7 @@ export function CreateOrderForm({
 
   const token0 = defaultToken0;
   const token1 = defaultToken1;
-  // 3. Get decimals from the new 'tokenInfoMap'
+  const token0Symbol = tokenInfoMap[token0]?.symbol ?? "Token";
   const token0Decimals = tokenInfoMap[token0]?.decimals ?? 18;
 
   const {
@@ -75,23 +68,11 @@ export function CreateOrderForm({
     },
   });
 
-  useEffect(() => {
-    if (!isLoadingBalance) {
-      console.log("Balance Data:", balanceData);
-      if (balanceError) {
-        console.error("Balance Error:", balanceError);
-      }
-    }
-  }, [balanceData, isLoadingBalance, balanceError]);
-
   const {
     data: allowance,
     refetch: refetchAllowance,
     isLoading: isLoadingAllowance,
-    error: allowanceError,
-    status: allowanceStatus,
   } = useReadContract({
-    // <--- Was missing
     address: token0,
     abi: erc20Abi,
     functionName: "allowance",
@@ -112,19 +93,6 @@ export function CreateOrderForm({
     },
   });
 
-  useEffect(() => {
-    console.log("Allowance Hook Status:", allowanceStatus);
-    if (isLoadingAllowance) {
-      console.log("Allowance: Loading...");
-    }
-    if (allowance !== undefined) {
-      console.log("Allowance Value:", allowance, typeof allowance);
-    }
-    if (allowanceError) {
-      console.error("Allowance Error:", allowanceError);
-    }
-  }, [allowance, isLoadingAllowance, allowanceError, allowanceStatus]);
-
   const {
     data: approveHash,
     error: approveError,
@@ -140,49 +108,30 @@ export function CreateOrderForm({
   } = useWriteContract();
 
   const { isLoading: isApproving, isSuccess: isApproved } =
-    useWaitForTransactionReceipt({ hash: approveHash }); // <--- Was missing
+    useWaitForTransactionReceipt({ hash: approveHash });
   const { isLoading: isConfirming, isSuccess: isConfirmed } =
-    useWaitForTransactionReceipt({ hash: createOrderHash }); // <--- Was missing
+    useWaitForTransactionReceipt({ hash: createOrderHash });
 
   useEffect(() => {
-    console.log(
-      `Checking needsApproval: allowance=${allowance}, amount0=${amount0}, token0Decimals=${token0Decimals}`
-    );
     if (allowance === undefined || !amount0 || !token0Decimals) {
       if (needsApproval) {
-        console.log(
-          "Setting needsApproval to false (inputs missing or allowance undefined)"
-        );
         setNeedsApproval(false);
       }
       return;
     }
 
     try {
-      const requiredAmount = parseUnits(amount0, token0Decimals); // <--- Was missing
+      const requiredAmount = parseUnits(amount0, token0Decimals);
       const shouldNeedApproval = allowance < requiredAmount;
-      console.log(
-        `Allowance check: Required=${requiredAmount}, Has=${allowance}, ShouldNeedApproval=${shouldNeedApproval}`
-      );
       if (needsApproval !== shouldNeedApproval) {
-        console.log(`Setting needsApproval to ${shouldNeedApproval}`);
         setNeedsApproval(shouldNeedApproval);
       }
     } catch (error) {
-      console.error("Error parsing amount for allowance check:", error);
       if (needsApproval) {
-        console.log("Setting needsApproval to false (parse error)");
         setNeedsApproval(false);
       }
     }
-  }, [
-    allowance,
-    amount0,
-    token0Decimals,
-    userAddress,
-    P2P_CONTRACT_ADDRESS,
-    needsApproval,
-  ]);
+  }, [allowance, amount0, token0Decimals, needsApproval]);
 
   useEffect(() => {
     if (isApproved) {
@@ -207,9 +156,9 @@ export function CreateOrderForm({
     if (needsApproval || !token0 || !token1 || !amount0) return;
 
     try {
-      const formattedAmount0 = parseUnits(amount0, token0Decimals); // <--- Was missing
-      const formattedMaxPrice = maxPrice ? parseUnits(maxPrice, 18) : 0n; // <--- Was missing
-      const formattedMinPrice = minPrice ? parseUnits(minPrice, 18) : 0n; // <--- Was missing
+      const formattedAmount0 = parseUnits(amount0, token0Decimals);
+      const formattedMaxPrice = maxPrice ? parseUnits(maxPrice, 18) : 0n;
+      const formattedMinPrice = minPrice ? parseUnits(minPrice, 18) : 0n;
 
       createOrderWriteContract({
         address: P2P_CONTRACT_ADDRESS,
@@ -228,106 +177,401 @@ export function CreateOrderForm({
     }
   };
 
-  return (
-    <form onSubmit={needsApproval ? handleApprove : handleCreateOrder}>
-      {/* 3. Get symbol from the new 'tokenInfoMap' */}
-      <h3>Create Order (Sell {tokenInfoMap[token0]?.symbol ?? "Token"})</h3>
+  const setPercentage = (percent: number) => {
+    if (!balanceData) return;
+    const balance = formatUnits(balanceData.value, balanceData.decimals);
+    const percentAmount = (parseFloat(balance) * percent) / 100;
+    setAmount0(percentAmount.toFixed(token0Decimals > 6 ? 6 : token0Decimals));
+  };
 
-      <div>
-        <label>
-          Amount to Sell (amount0):
+  const balance = balanceData
+    ? formatUnits(balanceData.value, balanceData.decimals)
+    : "0";
+
+  return (
+    <div style={styles.container}>
+      {/* Balance Section */}
+      <div style={styles.balanceSection}>
+        <div style={styles.balanceLabel}>Available Balance</div>
+        <div style={styles.balanceAmount}>
+          {isLoadingBalance ? (
+            <span className="loading">Loading...</span>
+          ) : balanceError ? (
+            <span style={{ color: "var(--error)" }}>Error</span>
+          ) : (
+            <>
+              {balance} <span style={styles.tokenSymbol}>{token0Symbol}</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Amount Input */}
+      <div style={styles.inputGroup}>
+        <label style={styles.label}>
+          Amount to Sell
+          <span style={styles.tooltip} title="Amount of tokens you want to sell">
+            ⓘ
+          </span>
+        </label>
+        <div style={styles.inputWrapper}>
           <input
             type="text"
             value={amount0}
             onChange={(e) => setAmount0(e.target.value)}
-            placeholder={`e.g., 1.5 (${token0Decimals} decimals)`}
+            placeholder="0.0"
+            style={styles.input}
           />
-        </label>
-        {isConnected && token0 && token0 !== "0x" && (
-          <span className="balance-display">
-            Balance:{" "}
-            {isLoadingBalance
-              ? "Loading..."
-              : balanceError
-                ? `Error: ${balanceError.message}`
-                : balanceData
-                  ? `${formatUnits(balanceData.value, balanceData.decimals)} ${
-                      // <--- Was missing
-                      balanceData.symbol
-                    }`
-                  : "N/A"}
-          </span>
-        )}
-      </div>
-      <div>
-        <label>
-          Max Price (USD, 18 decimals):
-          <input
-            type="text"
-            value={maxPrice}
-            onChange={(e) => setMaxPrice(e.target.value)}
-            placeholder="e.g., 3000.50 (Optional)"
-          />
-        </label>
-      </div>
-      <div>
-        <label>
-          Min Price (USD, 18 decimals):
-          <input
-            type="text"
-            value={minPrice}
-            onChange={(e) => setMinPrice(e.target.value)}
-            placeholder="e.g., 2950.00 (Optional)"
-          />
-        </label>
+          <button
+            type="button"
+            onClick={() => setPercentage(100)}
+            style={styles.maxButton}
+          >
+            MAX
+          </button>
+        </div>
+
+        {/* Percentage Buttons */}
+        <div style={styles.percentButtons}>
+          {[25, 50, 75, 100].map((percent) => (
+            <button
+              key={percent}
+              type="button"
+              onClick={() => setPercentage(percent)}
+              style={styles.percentButton}
+            >
+              {percent}%
+            </button>
+          ))}
+        </div>
       </div>
 
+      {/* Price Range */}
+      <div style={styles.priceRange}>
+        <div style={styles.priceLabel}>
+          Price Range (Optional)
+          <span style={styles.tooltip} title="Set min/max prices for your order to execute">
+            ⓘ
+          </span>
+        </div>
+        <div style={styles.priceInputs}>
+          <div style={styles.priceInputGroup}>
+            <label style={styles.smallLabel}>Min Price</label>
+            <input
+              type="text"
+              value={minPrice}
+              onChange={(e) => setMinPrice(e.target.value)}
+              placeholder="No limit"
+              style={styles.smallInput}
+            />
+          </div>
+          <div style={styles.priceSeparator}>→</div>
+          <div style={styles.priceInputGroup}>
+            <label style={styles.smallLabel}>Max Price</label>
+            <input
+              type="text"
+              value={maxPrice}
+              onChange={(e) => setMaxPrice(e.target.value)}
+              placeholder="No limit"
+              style={styles.smallInput}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Submit Button */}
       <button
         type="submit"
+        onClick={needsApproval ? handleApprove : handleCreateOrder}
         disabled={isApproving || isConfirming || !isConnected || !amount0}
+        style={{
+          ...styles.submitButton,
+          ...(needsApproval ? styles.approveButton : styles.sellButton),
+        }}
       >
-        {isApproving
-          ? "Approving..."
-          : needsApproval
-            ? `Approve ${balanceData?.symbol ?? "Token"}`
-            : isConfirming
-              ? "Confirming Order..."
-              : "Create Order"}
+        {isApproving ? (
+          <span>⏳ Approving...</span>
+        ) : needsApproval ? (
+          <span>✓ Approve {token0Symbol}</span>
+        ) : isConfirming ? (
+          <span>⏳ Creating Order...</span>
+        ) : (
+          <span>📉 Create Sell Order</span>
+        )}
       </button>
 
-      {/* --- Feedback Section --- */}
+      {/* Feedback Messages */}
       {approveStatus === "pending" && (
-        <p>Waiting for approval confirmation in wallet...</p>
+        <div style={styles.infoMessage}>
+          <span>💡</span> Check your wallet to confirm approval
+        </div>
       )}
-      {isApproving && <p>Processing approval transaction...</p>}
       {isApproved && !needsApproval && (
-        <p className="success-message">
-          Approval successful! You can now create the order.
-        </p>
+        <div style={styles.successMessage}>
+          <span>✓</span> Approval successful! You can now create the order.
+        </div>
       )}
       {approveStatus === "error" && (
-        <p className="error-message">
-          Approval Error:{" "}
+        <div style={styles.errorMessage}>
+          <span>⚠</span>{" "}
           {(approveError as BaseError)?.shortMessage || approveError?.message}
-        </p>
+        </div>
       )}
 
       {createOrderStatus === "pending" && (
-        <p>Waiting for order creation confirmation in wallet...</p>
+        <div style={styles.infoMessage}>
+          <span>💡</span> Check your wallet to confirm the transaction
+        </div>
       )}
-      {isConfirming && <p>Processing create order transaction...</p>}
       {isConfirmed && (
-        <p className="success-message">
-          Order created successfully! Transaction hash: {createOrderHash}
-        </p>
+        <div style={styles.successMessage}>
+          <span>✓</span> Order created! Check the order book below.
+        </div>
       )}
       {createOrderStatus === "error" && (
-        <p className="error-message">
-          Create Order Error:{" "}
+        <div style={styles.errorMessage}>
+          <span>⚠</span>{" "}
           {(createOrderError as BaseError)?.shortMessage ||
             createOrderError?.message}
-        </p>
+        </div>
       )}
-    </form>
+
+      {!isConnected && (
+        <div style={styles.warningMessage}>
+          <span>⚠</span> Connect your wallet to create orders
+        </div>
+      )}
+    </div>
   );
 }
+
+const styles = {
+  container: {
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: "1.25rem",
+  },
+
+  balanceSection: {
+    padding: "1rem",
+    background: "rgba(59, 130, 246, 0.05)",
+    borderRadius: "0.5rem",
+    border: "1px solid rgba(59, 130, 246, 0.15)",
+  },
+
+  balanceLabel: {
+    fontSize: "0.75rem",
+    color: "var(--text-muted)",
+    marginBottom: "0.25rem",
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.05em",
+  },
+
+  balanceAmount: {
+    fontSize: "1.5rem",
+    fontWeight: "600",
+    color: "var(--text-primary)",
+  },
+
+  tokenSymbol: {
+    fontSize: "1rem",
+    color: "var(--text-secondary)",
+    marginLeft: "0.5rem",
+  },
+
+  inputGroup: {
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: "0.5rem",
+  },
+
+  label: {
+    fontSize: "0.875rem",
+    fontWeight: "500",
+    color: "var(--text-secondary)",
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+  },
+
+  tooltip: {
+    cursor: "help",
+    opacity: 0.5,
+    fontSize: "0.875rem",
+  },
+
+  inputWrapper: {
+    position: "relative" as const,
+    display: "flex",
+    alignItems: "center",
+  },
+
+  input: {
+    width: "100%",
+    padding: "1rem",
+    paddingRight: "5rem",
+    fontSize: "1.25rem",
+    fontWeight: "500",
+    background: "var(--bg-tertiary)",
+    border: "2px solid var(--border-color)",
+    borderRadius: "0.5rem",
+    color: "var(--text-primary)",
+    transition: "all 0.3s ease",
+  },
+
+  maxButton: {
+    position: "absolute" as const,
+    right: "0.5rem",
+    padding: "0.5rem 1rem",
+    background: "rgba(255, 0, 128, 0.2)",
+    border: "1px solid #ff0080",
+    borderRadius: "0.375rem",
+    color: "#ff0080",
+    fontSize: "0.75rem",
+    fontWeight: "700",
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+  },
+
+  percentButtons: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, 1fr)",
+    gap: "0.5rem",
+  },
+
+  percentButton: {
+    padding: "0.5rem",
+    background: "var(--bg-tertiary)",
+    border: "1px solid var(--border-color)",
+    borderRadius: "0.375rem",
+    color: "var(--text-secondary)",
+    fontSize: "0.75rem",
+    fontWeight: "600",
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+  },
+
+  priceRange: {
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: "0.75rem",
+  },
+
+  priceLabel: {
+    fontSize: "0.875rem",
+    fontWeight: "500",
+    color: "var(--text-secondary)",
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+  },
+
+  priceInputs: {
+    display: "grid",
+    gridTemplateColumns: "1fr auto 1fr",
+    gap: "0.75rem",
+    alignItems: "end",
+  },
+
+  priceInputGroup: {
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: "0.5rem",
+  },
+
+  smallLabel: {
+    fontSize: "0.75rem",
+    color: "var(--text-muted)",
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.05em",
+  },
+
+  smallInput: {
+    padding: "0.75rem",
+    fontSize: "0.875rem",
+    background: "var(--bg-tertiary)",
+    border: "1px solid var(--border-color)",
+    borderRadius: "0.375rem",
+    color: "var(--text-primary)",
+    transition: "all 0.3s ease",
+  },
+
+  priceSeparator: {
+    fontSize: "1.25rem",
+    color: "var(--text-muted)",
+    paddingBottom: "0.75rem",
+  },
+
+  submitButton: {
+    width: "100%",
+    padding: "1rem",
+    fontSize: "1rem",
+    fontWeight: "600",
+    border: "none",
+    borderRadius: "0.5rem",
+    cursor: "pointer",
+    transition: "all 0.3s ease",
+    marginTop: "0.5rem",
+  },
+
+  approveButton: {
+    background: "rgba(59, 130, 246, 0.2)",
+    color: "#60a5fa",
+    border: "2px solid #3b82f6",
+  },
+
+  sellButton: {
+    background: "rgba(255, 0, 128, 0.2)",
+    color: "#ff0080",
+    border: "2px solid #ff0080",
+    boxShadow: "0 0 20px rgba(255, 0, 128, 0.2)",
+  },
+
+  successMessage: {
+    padding: "0.75rem",
+    background: "rgba(16, 185, 129, 0.1)",
+    border: "1px solid rgba(16, 185, 129, 0.3)",
+    borderRadius: "0.375rem",
+    color: "#10b981",
+    fontSize: "0.875rem",
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+  },
+
+  errorMessage: {
+    padding: "0.75rem",
+    background: "rgba(239, 68, 68, 0.1)",
+    border: "1px solid rgba(239, 68, 68, 0.3)",
+    borderRadius: "0.375rem",
+    color: "#ef4444",
+    fontSize: "0.875rem",
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+  },
+
+  infoMessage: {
+    padding: "0.75rem",
+    background: "rgba(59, 130, 246, 0.1)",
+    border: "1px solid rgba(59, 130, 246, 0.3)",
+    borderRadius: "0.375rem",
+    color: "#60a5fa",
+    fontSize: "0.875rem",
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+  },
+
+  warningMessage: {
+    padding: "0.75rem",
+    background: "rgba(245, 158, 11, 0.1)",
+    border: "1px solid rgba(245, 158, 11, 0.3)",
+    borderRadius: "0.375rem",
+    color: "#f59e0b",
+    fontSize: "0.875rem",
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+  },
+};

@@ -678,3 +678,90 @@ hr {
     padding: 0.75rem 0.5rem;
   }
 }
+
+/* ============================================ */
+/* Cyberpunk Trading Interface Enhancements    */
+/* ============================================ */
+
+/* Input Focus Glow */
+input[type="text"]:focus,
+input[type="number"]:focus {
+  border-color: #00f5ff !important;
+  box-shadow: 0 0 0 3px rgba(0, 245, 255, 0.1), 0 0 15px rgba(0, 245, 255, 0.2) !important;
+}
+
+/* Button Hover Animations */
+button:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* Cyberpunk Glow Effect for Active Elements */
+@keyframes neonGlow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(0, 245, 255, 0.2),
+                0 0 10px rgba(0, 245, 255, 0.2),
+                0 0 20px rgba(0, 245, 255, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 10px rgba(0, 245, 255, 0.4),
+                0 0 20px rgba(0, 245, 255, 0.4),
+                0 0 30px rgba(0, 245, 255, 0.4);
+  }
+}
+
+/* Percentage Button Hover */
+button[style*="percentButton"]:hover {
+  background: rgba(0, 245, 255, 0.1) !important;
+  border-color: rgba(0, 245, 255, 0.5) !important;
+  color: #00f5ff !important;
+}
+
+/* Max Button Hover */
+button[style*="maxButton"]:hover {
+  background: rgba(255, 0, 128, 0.3) !important;
+  box-shadow: 0 0 15px rgba(255, 0, 128, 0.3) !important;
+  transform: scale(1.05);
+}
+
+/* Buy Button Glow */
+button[style*="buyButton"]:not(:disabled) {
+  animation: neonGlow 2s ease-in-out infinite;
+}
+
+button[style*="buyButton"]:hover:not(:disabled) {
+  box-shadow: 0 0 30px rgba(0, 245, 255, 0.4) !important;
+}
+
+/* Sell Button Glow */
+button[style*="sellButton"]:not(:disabled) {
+  animation: neonGlow 2s ease-in-out infinite;
+}
+
+button[style*="sellButton"]:hover:not(:disabled) {
+  box-shadow: 0 0 30px rgba(255, 0, 128, 0.4) !important;
+}
+
+/* Smooth Transitions */
+* {
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Loading Pulse Animation Enhancement */
+@keyframes cyberpunkPulse {
+  0%, 100% {
+    opacity: 1;
+    text-shadow: 0 0 5px rgba(0, 245, 255, 0.5);
+  }
+  50% {
+    opacity: 0.6;
+    text-shadow: 0 0 10px rgba(0, 245, 255, 0.8);
+  }
+}
+
+.loading {
+  animation: cyberpunkPulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
+}

@@ -125,7 +125,7 @@ contract P2P is ReentrancyGuard {
             _minPrice
         );
         market.orders[orderId] = order;
-
+        // @todo max price and min price should be in token1 not USD
         // create new node in mapping
         QueueNode memory queueNode = QueueNode({
             nextId: 0, //0 because its the last order
