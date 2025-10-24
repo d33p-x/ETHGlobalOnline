@@ -165,7 +165,11 @@ export default function MarketPage({
               overflow: "auto",
             }}
           >
-            <TradingInterface defaultToken0={token0} defaultToken1={token1} />
+            <TradingInterface
+              defaultToken0={token0}
+              defaultToken1={token1}
+              marketId={marketId}
+            />
           </div>
         </div>
 

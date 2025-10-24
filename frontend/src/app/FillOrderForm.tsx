@@ -8,6 +8,7 @@ import {
   useWaitForTransactionReceipt,
   useReadContract,
   useBalance,
+  usePublicClient,
 } from "wagmi";
 import {
   type Address,
@@ -35,23 +36,75 @@ const p2pAbi = [
   },
 ] as const;
 
+// ABI for OrderCreated event to check liquidity
+const orderEventAbi = [
+  {
+    type: "event",
+    name: "OrderCreated",
+    inputs: [
+      { name: "marketId", type: "bytes32", indexed: true },
+      { name: "maker", type: "address", indexed: true },
+      { name: "token0", type: "address", indexed: false },
+      { name: "token1", type: "address", indexed: false },
+      { name: "amount0", type: "uint256", indexed: false },
+      { name: "maxPrice", type: "uint256", indexed: false },
+      { name: "minPrice", type: "uint256", indexed: false },
+      { name: "orderId", type: "uint256", indexed: false },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "OrderReducedOrCancelled",
+    inputs: [
+      { name: "marketId", type: "bytes32", indexed: true },
+      { name: "maker", type: "address", indexed: false },
+      { name: "token0", type: "address", indexed: false },
+      { name: "token1", type: "address", indexed: false },
+      { name: "orderId", type: "uint256", indexed: true },
+      { name: "amount0Closed", type: "uint256", indexed: false },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "OrderFilled",
+    inputs: [
+      { name: "marketId", type: "bytes32", indexed: true },
+      { name: "token0", type: "address", indexed: false },
+      { name: "token1", type: "address", indexed: false },
+      { name: "orderId", type: "uint256", indexed: true },
+      { name: "amount0Filled", type: "uint256", indexed: false },
+      { name: "amount1Spent", type: "uint256", indexed: false },
+      { name: "taker", type: "address", indexed: true },
+    ],
+    anonymous: false,
+  },
+] as const;
+
 export function FillOrderForm({
   defaultToken0,
   defaultToken1,
+  marketId,
 }: {
   defaultToken0: Address;
   defaultToken1: Address;
+  marketId: string;
 }) {
   const { address: userAddress, isConnected, chain } = useAccount();
 
   const [amount1, setAmount1] = useState("");
   const [needsApproval, setNeedsApproval] = useState(false);
+  const [hasLiquidity, setHasLiquidity] = useState(true);
+  const [isCheckingLiquidity, setIsCheckingLiquidity] = useState(true);
 
   const token0 = defaultToken0;
   const token1 = defaultToken1;
   const token0Symbol = tokenInfoMap[token0]?.symbol ?? "Token";
   const token1Symbol = tokenInfoMap[token1]?.symbol ?? "Token";
   const token1Decimals = tokenInfoMap[token1]?.decimals ?? 18;
+
+  const client = usePublicClient({ chainId: foundry.id });
 
   const {
     data: balanceData,
@@ -109,6 +162,98 @@ export function FillOrderForm({
     useWaitForTransactionReceipt({ hash: approveHash });
   const { isLoading: isConfirming, isSuccess: isConfirmed } =
     useWaitForTransactionReceipt({ hash: fillOrderHash });
+
+  // Check for available liquidity
+  useEffect(() => {
+    if (!client || !marketId) {
+      setHasLiquidity(false);
+      setIsCheckingLiquidity(false);
+      return;
+    }
+
+    const checkLiquidity = async () => {
+      setIsCheckingLiquidity(true);
+      try {
+        // Fetch all order events for this market
+        const createdLogs = await client.getLogs({
+          address: P2P_CONTRACT_ADDRESS,
+          event: orderEventAbi[0], // OrderCreated
+          args: { marketId: marketId as `0x${string}` },
+          fromBlock: 0n,
+          toBlock: "latest",
+        });
+
+        const cancelledLogs = await client.getLogs({
+          address: P2P_CONTRACT_ADDRESS,
+          event: orderEventAbi[1], // OrderReducedOrCancelled
+          args: { marketId: marketId as `0x${string}` },
+          fromBlock: 0n,
+          toBlock: "latest",
+        });
+
+        const filledLogs = await client.getLogs({
+          address: P2P_CONTRACT_ADDRESS,
+          event: orderEventAbi[2], // OrderFilled
+          args: { marketId: marketId as `0x${string}` },
+          fromBlock: 0n,
+          toBlock: "latest",
+        });
+
+        // Build order map
+        const orderMap = new Map<
+          bigint,
+          { remainingAmount0: bigint }
+        >();
+
+        // Process created orders
+        for (const log of createdLogs) {
+          const orderId = log.args.orderId!;
+          const amount0 = log.args.amount0!;
+          orderMap.set(orderId, { remainingAmount0: amount0 });
+        }
+
+        // Process cancellations/reductions
+        for (const log of cancelledLogs) {
+          const orderId = log.args.orderId!;
+          const amount0Closed = log.args.amount0Closed!;
+          const existing = orderMap.get(orderId);
+          if (existing) {
+            existing.remainingAmount0 -= amount0Closed;
+            if (existing.remainingAmount0 <= 0n) {
+              orderMap.delete(orderId);
+            }
+          }
+        }
+
+        // Process fills
+        for (const log of filledLogs) {
+          const orderId = log.args.orderId!;
+          const amount0Filled = log.args.amount0Filled!;
+          const existing = orderMap.get(orderId);
+          if (existing) {
+            existing.remainingAmount0 -= amount0Filled;
+            if (existing.remainingAmount0 <= 0n) {
+              orderMap.delete(orderId);
+            }
+          }
+        }
+
+        // Check if there are any orders with remaining amount > 0
+        const hasActiveOrders = Array.from(orderMap.values()).some(
+          (order) => order.remainingAmount0 > 0n
+        );
+
+        setHasLiquidity(hasActiveOrders);
+      } catch (error) {
+        console.error("Error checking liquidity:", error);
+        setHasLiquidity(false);
+      } finally {
+        setIsCheckingLiquidity(false);
+      }
+    };
+
+    checkLiquidity();
+  }, [client, marketId]);
 
   useEffect(() => {
     if (allowance === undefined || !amount1 || !token1Decimals) {
@@ -249,13 +394,24 @@ export function FillOrderForm({
       <button
         type="submit"
         onClick={needsApproval ? handleApprove : handleFillOrder}
-        disabled={isApproving || isConfirming || !isConnected || !amount1}
+        disabled={
+          isApproving ||
+          isConfirming ||
+          !isConnected ||
+          !amount1 ||
+          !hasLiquidity ||
+          isCheckingLiquidity
+        }
         style={{
           ...styles.submitButton,
           ...(needsApproval ? styles.approveButton : styles.buyButton),
         }}
       >
-        {isApproving ? (
+        {isCheckingLiquidity ? (
+          <span>⏳ Checking liquidity...</span>
+        ) : !hasLiquidity ? (
+          <span>🚫 No Liquidity Available</span>
+        ) : isApproving ? (
           <span>⏳ Approving...</span>
         ) : needsApproval ? (
           <span>✓ Approve {token1Symbol}</span>
@@ -305,6 +461,12 @@ export function FillOrderForm({
       {!isConnected && (
         <div style={styles.warningMessage}>
           <span>⚠</span> Connect your wallet to buy
+        </div>
+      )}
+
+      {isConnected && !hasLiquidity && !isCheckingLiquidity && (
+        <div style={styles.warningMessage}>
+          <span>💧</span> No sell orders available. Be the first to create a sell order!
         </div>
       )}
     </div>

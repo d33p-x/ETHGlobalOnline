@@ -8,11 +8,13 @@ import { FillOrderForm } from "./FillOrderForm";
 interface TradingInterfaceProps {
   defaultToken0: Address;
   defaultToken1: Address;
+  marketId: string;
 }
 
 export function TradingInterface({
   defaultToken0,
   defaultToken1,
+  marketId,
 }: TradingInterfaceProps) {
   const [activeTab, setActiveTab] = useState<"buy" | "sell">("buy");
 
@@ -48,6 +50,7 @@ export function TradingInterface({
           <FillOrderForm
             defaultToken0={defaultToken0}
             defaultToken1={defaultToken1}
+            marketId={marketId}
           />
         ) : (
           <CreateOrderForm

@@ -272,11 +272,13 @@ contract P2P is ReentrancyGuard {
         uint256 amount0FilledTotal = 0;
         uint256 amount1SpentOnSellers = 0;
         uint256 currentOrderId = market.headId;
-        // @todo add loop limiter
-        while (amount0FilledTotal < amount0Target && currentOrderId != 0) {
+        for (
+            uint256 i = 0;
+            i < 50 && amount0FilledTotal < amount0Target && currentOrderId != 0;
+            i++
+        ) {
             Order storage order = market.orders[currentOrderId];
             QueueNode storage queueNode = market.queue[currentOrderId];
-
             uint256 nextOrderId = queueNode.nextId;
 
             if (
