@@ -70,6 +70,16 @@ type Order = {
 // Map to store orders, keyed by orderId
 type OrderMap = Map<bigint, Order>;
 
+// Helper function to format numbers to max 4 decimals
+function formatToMaxDecimals(value: string, maxDecimals: number = 4): string {
+  const num = parseFloat(value);
+  if (isNaN(num)) return value;
+
+  // Convert to fixed decimal, then remove trailing zeros
+  const fixed = num.toFixed(maxDecimals);
+  return parseFloat(fixed).toString();
+}
+
 export function OrderList({ marketId }: { marketId: string }) {
   const [orders, setOrders] = useState<OrderMap>(new Map());
   const [isLoading, setIsLoading] = useState(false);
@@ -427,15 +437,15 @@ export function OrderList({ marketId }: { marketId: string }) {
                 <tr key={order.orderId.toString()}>
                   <td>{order.orderId.toString()}</td>
                   <td>{order.maker.substring(0, 8)}...</td>
-                  <td>{formatUnits(order.remainingAmount0, decimals0)}</td>
+                  <td>{formatToMaxDecimals(formatUnits(order.remainingAmount0, decimals0))}</td>
                   <td>
                     {order.minPrice > 0n
-                      ? formatUnits(order.minPrice, 18)
+                      ? formatToMaxDecimals(formatUnits(order.minPrice, 18))
                       : "N/A"}
                   </td>
                   <td>
                     {order.maxPrice > 0n
-                      ? formatUnits(order.maxPrice, 18)
+                      ? formatToMaxDecimals(formatUnits(order.maxPrice, 18))
                       : "N/A"}
                   </td>
                 </tr>

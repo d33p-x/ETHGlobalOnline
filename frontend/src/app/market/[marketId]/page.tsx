@@ -12,6 +12,7 @@ import LightweightMarketChart from "@/app/LightweightMarketChart";
 import { FillOrderForm } from "@/app/FillOrderForm";
 import { CreateOrderForm } from "@/app/CreateOrderForm";
 import { OrderList } from "@/app/OrderList";
+import { TradesList } from "@/app/TradesList";
 
 export default function MarketPage({
   params,
@@ -70,56 +71,88 @@ export default function MarketPage({
         </p>
       </div>
 
-      {/* Main Content Area: Chart (50%) | OrderBook (25%) | Forms (25%) */}
+      {/* Main Content Area: Chart | Forms on top, OrderBook below */}
       <div
         style={{
-          display: "grid",
-          gridTemplateColumns: "2fr 1fr 1fr",
+          display: "flex",
+          flexDirection: "column",
           gap: "1rem",
           flex: 1,
           minHeight: 0,
         }}
       >
-        {/* Chart - 50% width */}
+        {/* Top Row: Chart (66%) | Forms (33%) */}
         <div
           style={{
-            minWidth: 0,
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
-          <LightweightMarketChart
-            baseSymbol={chartBaseSymbol}
-            quoteSymbol={chartQuoteSymbol}
-            chartType="Candlestick"
-            interval="60"
-          />
-        </div>
-
-        {/* OrderBook - 25% width */}
-        <div
-          style={{
-            minWidth: 280,
-            display: "flex",
-            flexDirection: "column",
-            overflow: "auto",
-          }}
-        >
-          <OrderList marketId={marketId} />
-        </div>
-
-        {/* Forms - 25% width, stacked vertically */}
-        <div
-          style={{
-            minWidth: 320,
-            display: "flex",
-            flexDirection: "column",
+            display: "grid",
+            gridTemplateColumns: "2fr 1fr",
             gap: "1rem",
-            overflow: "auto",
+            height: "60%",
+            minHeight: 0,
           }}
         >
-          <CreateOrderForm defaultToken0={token0} defaultToken1={token1} />
-          <FillOrderForm defaultToken0={token0} defaultToken1={token1} />
+          {/* Chart - 66% width */}
+          <div
+            style={{
+              minWidth: 0,
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <LightweightMarketChart
+              baseSymbol={chartBaseSymbol}
+              quoteSymbol={chartQuoteSymbol}
+              chartType="Candlestick"
+              interval="60"
+            />
+          </div>
+
+          {/* Forms - 33% width, stacked vertically */}
+          <div
+            style={{
+              minWidth: 320,
+              display: "flex",
+              flexDirection: "column",
+              gap: "1rem",
+              overflow: "auto",
+            }}
+          >
+            <CreateOrderForm defaultToken0={token0} defaultToken1={token1} />
+            <FillOrderForm defaultToken0={token0} defaultToken1={token1} />
+          </div>
+        </div>
+
+        {/* Bottom Row: OrderBook (50%) | Trades (50%) */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "1rem",
+            height: "40%",
+            minHeight: 0,
+          }}
+        >
+          {/* OrderBook - left half */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              overflow: "auto",
+            }}
+          >
+            <OrderList marketId={marketId} />
+          </div>
+
+          {/* Recent Trades - right half */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              overflow: "auto",
+            }}
+          >
+            <TradesList marketId={marketId} />
+          </div>
         </div>
       </div>
     </div>
