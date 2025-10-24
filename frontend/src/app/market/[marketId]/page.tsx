@@ -12,7 +12,6 @@ import LightweightMarketChart from "@/app/LightweightMarketChart";
 import { FillOrderForm } from "@/app/FillOrderForm";
 import { CreateOrderForm } from "@/app/CreateOrderForm";
 import { OrderList } from "@/app/OrderList";
-import { CancelReduceOrderForm } from "@/app/CancelReduceOrderForm";
 
 export default function MarketPage({
   params,
@@ -45,45 +44,82 @@ export default function MarketPage({
   const chartQuoteSymbol = symbol1 === "WETH" ? "ETH" : symbol1;
 
   return (
-    <div>
-      <h2>
-        Market: {symbol0} / {symbol1}
-      </h2>
-      <p style={{ fontFamily: "monospace", fontSize: "12px", color: "#888" }}>
-        Market ID: {marketId}
-      </p>
-      <hr style={{ margin: "20px 0" }} />
-
-      {/* --- 5. Add the Lightweight Chart Component --- */}
-      <div style={{ marginTop: "20px", marginBottom: "20px" }}>
-        <LightweightMarketChart
-          baseSymbol={chartBaseSymbol}
-          quoteSymbol={chartQuoteSymbol}
-          chartType="Candlestick" // Or "Line", "Area"
-          interval="60" // e.g., 60 for 1 hour. "D" for 1 day.
-        />
+    <div
+      style={{
+        padding: "1.5rem",
+        minHeight: "calc(100vh - 80px)",
+        display: "flex",
+        flexDirection: "column",
+        gap: "1rem",
+      }}
+    >
+      {/* Header Section */}
+      <div style={{ marginBottom: "0.5rem" }}>
+        <h2 style={{ margin: "0 0 0.5rem 0", fontSize: "1.75rem" }}>
+          {symbol0} / {symbol1}
+        </h2>
+        <p
+          style={{
+            fontFamily: "monospace",
+            fontSize: "0.75rem",
+            color: "#888",
+            margin: 0,
+          }}
+        >
+          Market ID: {marketId}
+        </p>
       </div>
-      <hr style={{ margin: "20px 0" }} />
 
-      {/* --- Your existing components --- */}
-      <div style={{ display: "flex", gap: "20px", marginTop: "20px" }}>
-        <div style={{ flex: 1 }}>
-          <OrderList marketId={marketId} />
-        </div>
+      {/* Main Content Area: Chart (50%) | OrderBook (25%) | Forms (25%) */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "2fr 1fr 1fr",
+          gap: "1rem",
+          flex: 1,
+          minHeight: 0,
+        }}
+      >
+        {/* Chart - 50% width */}
         <div
           style={{
-            flex: 1,
+            minWidth: 0,
             display: "flex",
             flexDirection: "column",
-            gap: "20px",
+          }}
+        >
+          <LightweightMarketChart
+            baseSymbol={chartBaseSymbol}
+            quoteSymbol={chartQuoteSymbol}
+            chartType="Candlestick"
+            interval="60"
+          />
+        </div>
+
+        {/* OrderBook - 25% width */}
+        <div
+          style={{
+            minWidth: 280,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "auto",
+          }}
+        >
+          <OrderList marketId={marketId} />
+        </div>
+
+        {/* Forms - 25% width, stacked vertically */}
+        <div
+          style={{
+            minWidth: 320,
+            display: "flex",
+            flexDirection: "column",
+            gap: "1rem",
+            overflow: "auto",
           }}
         >
           <CreateOrderForm defaultToken0={token0} defaultToken1={token1} />
           <FillOrderForm defaultToken0={token0} defaultToken1={token1} />
-          <CancelReduceOrderForm
-            defaultToken0={token0}
-            defaultToken1={token1}
-          />
         </div>
       </div>
     </div>

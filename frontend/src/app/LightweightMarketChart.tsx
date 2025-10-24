@@ -173,6 +173,16 @@ async function fetchAndCalculateSyntheticData(
   }
 }
 
+// --- Interval Options ---
+const INTERVALS = [
+  { label: "1m", value: "1", days: 1 },
+  { label: "5m", value: "5", days: 2 },
+  { label: "15m", value: "15", days: 3 },
+  { label: "1h", value: "60", days: 7 },
+  { label: "4h", value: "240", days: 30 },
+  { label: "1D", value: "D", days: 90 },
+] as const;
+
 // --- The React Component ---
 const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
   baseSymbol,
@@ -185,6 +195,7 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
   const seriesRef = useRef<ISeriesApi<SeriesType> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedInterval, setSelectedInterval] = useState(interval);
 
   useEffect(() => {
     if (!chartContainerRef.current) {
@@ -275,14 +286,15 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
       setError(null);
 
       const endTime = Math.floor(Date.now() / 1000);
-      const daysToFetch = interval === "D" ? 90 : 7;
+      const intervalConfig = INTERVALS.find((i) => i.value === selectedInterval);
+      const daysToFetch = intervalConfig?.days ?? 7;
       const startTime = endTime - 60 * 60 * 24 * daysToFetch;
 
       try {
         const data = await fetchAndCalculateSyntheticData(
           baseSymbol,
           quoteSymbol,
-          interval,
+          selectedInterval,
           startTime,
           endTime
         );
@@ -341,7 +353,7 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
       }
     };
 
-    chartContainerRef.current.style.height = "500px";
+    chartContainerRef.current.style.height = "100%";
     handleResize();
     window.addEventListener("resize", handleResize);
 
@@ -355,10 +367,29 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
       }
       seriesRef.current = null;
     };
-  }, [baseSymbol, quoteSymbol, chartType, interval]);
+  }, [baseSymbol, quoteSymbol, chartType, selectedInterval]);
 
   return (
-    <div style={{ width: "100%", height: "500px", position: "relative" }}>
+    <div style={{ width: "100%", height: "100%", position: "relative" }}>
+      {/* Interval Controls */}
+      <div style={styles.controlsContainer}>
+        {INTERVALS.map((intervalOption) => (
+          <button
+            key={intervalOption.value}
+            onClick={() => setSelectedInterval(intervalOption.value)}
+            style={{
+              ...styles.intervalButton,
+              ...(selectedInterval === intervalOption.value
+                ? styles.intervalButtonActive
+                : {}),
+            }}
+            disabled={loading}
+          >
+            {intervalOption.label}
+          </button>
+        ))}
+      </div>
+
       {loading && (
         <div style={styles.loadingOverlay}>Loading Chart Data...</div>
       )}
@@ -370,6 +401,34 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
 
 // Simple overlay styles
 const styles = {
+  controlsContainer: {
+    position: "absolute",
+    top: "10px",
+    right: "10px",
+    display: "flex",
+    gap: "5px",
+    zIndex: 20,
+    backgroundColor: "rgba(26, 26, 26, 0.9)",
+    padding: "5px",
+    borderRadius: "5px",
+    border: "1px solid #444",
+  } as React.CSSProperties,
+  intervalButton: {
+    backgroundColor: "#2A2A2A",
+    color: "#DDD",
+    border: "1px solid #444",
+    borderRadius: "3px",
+    padding: "5px 12px",
+    fontSize: "12px",
+    fontWeight: "500",
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+  } as React.CSSProperties,
+  intervalButtonActive: {
+    backgroundColor: "#2962FF",
+    color: "white",
+    borderColor: "#2962FF",
+  } as React.CSSProperties,
   loadingOverlay: {
     position: "absolute",
     top: "50%",

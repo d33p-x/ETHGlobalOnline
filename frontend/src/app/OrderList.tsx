@@ -389,35 +389,44 @@ export function OrderList({ marketId }: { marketId: string }) {
   const orderArray = Array.from(orders.values());
 
   return (
-    <div>
-      <h3>Order Book</h3>
+    <div style={{
+      background: "var(--bg-card)",
+      padding: "1rem",
+      borderRadius: "0.75rem",
+      border: "1px solid var(--border-color)",
+      boxShadow: "var(--shadow-md)",
+      height: "100%",
+      display: "flex",
+      flexDirection: "column",
+      overflow: "hidden"
+    }}>
+      <h3 style={{ marginBottom: "0.75rem", fontSize: "1.125rem" }}>Order Book</h3>
 
       {!marketId ? (
-        <p>Market ID not found.</p>
+        <p style={{ fontSize: "0.875rem" }}>Market ID not found.</p>
       ) : isLoading ? (
-        <div>Loading orders for market {marketId.substring(0, 10)}...</div>
+        <div style={{ fontSize: "0.875rem" }}>Loading orders...</div>
       ) : error ? (
-        <div className="error-message">Error loading orders: {error}</div>
+        <div className="error-message">Error: {error}</div>
       ) : orderArray.length === 0 ? (
-        <p>No active orders found for this market.</p>
+        <p style={{ fontSize: "0.875rem" }}>No active orders.</p>
       ) : (
-        <>
-          <h4>Orders for Market {marketId.substring(0, 10)}... (Live)</h4>
-          <table border={1} className="order-table">
+        <div style={{ overflow: "auto", flex: 1 }}>
+          <table className="order-table">
             <thead>
               <tr>
-                <th>Order ID</th>
+                <th>ID</th>
                 <th>Maker</th>
-                <th>Remaining Amount</th>
-                <th>Min Price (USD)</th>
-                <th>Max Price (USD)</th>
+                <th>Amount</th>
+                <th>Min</th>
+                <th>Max</th>
               </tr>
             </thead>
             <tbody>
               {orderArray.map((order) => (
                 <tr key={order.orderId.toString()}>
                   <td>{order.orderId.toString()}</td>
-                  <td>{order.maker.substring(0, 10)}...</td>
+                  <td>{order.maker.substring(0, 8)}...</td>
                   <td>{formatUnits(order.remainingAmount0, decimals0)}</td>
                   <td>
                     {order.minPrice > 0n
@@ -433,7 +442,7 @@ export function OrderList({ marketId }: { marketId: string }) {
               ))}
             </tbody>
           </table>
-        </>
+        </div>
       )}
     </div>
   );

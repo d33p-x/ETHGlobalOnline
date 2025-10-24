@@ -231,23 +231,6 @@ export function FillOrderForm({
   return (
     <form onSubmit={needsApproval ? handleApprove : handleFillOrder}>
       <h3>Fill Order (Buy {tokenInfoMap[token0]?.symbol ?? "Token"})</h3>
-      <div className="instructions-box">
-        <small className="instructions-text">
-          <strong>Instructions:</strong>
-          <br />
-          1. Enter Token 0 (to receive) and Token 1 (to spend) addresses from
-          the Market List above.
-          <br />
-          2. Enter the amount of Token 1 you want to spend.
-          <br />
-          3. Your wallet balance for Token 1 will be shown.
-          <br />
-          4. You may need to click "Approve" first before filling the order.
-          <br />
-          5. The contract will fill orders at current oracle prices with a 0.01%
-          buyer fee and 0.005% seller bonus.
-        </small>
-      </div>
       <div>
         <label>
           Amount to Spend (amount1):
@@ -273,26 +256,6 @@ export function FillOrderForm({
           </span>
         )}
       </div>
-
-      {/* Debug Section */}
-      <details className="debug-section">
-        <summary>Debug Information</summary>
-        <div className="debug-content">
-          <p>isConnected: {isConnected ? "true" : "false"}</p>
-          <p>userAddress: {userAddress?.toString()}</p>
-          <p>token0: {token0}</p>
-          <p>token1: {token1}</p>
-          <p>amount1: {amount1}</p>
-          <p>allowance Status: {allowanceStatus}</p>
-          <p>allowance isLoading: {isLoadingAllowance ? "true" : "false"}</p>
-          <p>
-            allowance Value: {allowance?.toString()} ({typeof allowance})
-          </p>
-          <p>allowance Error: {allowanceError?.message}</p>
-          <p>token1Decimals: {token1Decimals}</p>
-          <p>needsApproval State: {needsApproval ? "true" : "false"}</p>
-        </div>
-      </details>
 
       {/* Submit Button */}
       <button

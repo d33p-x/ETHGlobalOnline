@@ -234,22 +234,6 @@ export function CreateOrderForm({
     <form onSubmit={needsApproval ? handleApprove : handleCreateOrder}>
       {/* 3. Get symbol from the new 'tokenInfoMap' */}
       <h3>Create Order (Sell {tokenInfoMap[token0]?.symbol ?? "Token"})</h3>
-      <div className="instructions-box">
-        <small className="instructions-text">
-          <strong>Instructions:</strong>
-          <br />
-          1. Enter Token 0 (to sell) and Token 1 (to buy) addresses from the
-          Market List above.
-          <br />
-          2. Enter the amount of Token 0 you want to sell.
-          <br />
-          3. Your wallet balance for Token 0 will be shown.
-          <br />
-          4. You may need to click "Approve" first before creating the order.
-          <br />
-          5. Prices are optional (0 means no limit).
-        </small>
-      </div>
 
       <div>
         <label>
@@ -299,24 +283,6 @@ export function CreateOrderForm({
           />
         </label>
       </div>
-
-      <details className="debug-section">
-        <summary>Debug Information</summary>
-        <div className="debug-content">
-          <p>isConnected: {isConnected ? "true" : "false"}</p>
-          <p>userAddress: {userAddress?.toString()}</p>
-          <p>token0: {token0}</p>
-          <p>amount0: {amount0}</p>
-          <p>allowance Status: {allowanceStatus}</p>
-          <p>allowance isLoading: {isLoadingAllowance ? "true" : "false"}</p>
-          <p>
-            allowance Value: {allowance?.toString()} ({typeof allowance})
-          </p>
-          <p>allowance Error: {allowanceError?.message}</p>
-          <p>token0Decimals: {token0Decimals}</p>
-          <p>needsApproval State: {needsApproval ? "true" : "false"}</p>
-        </div>
-      </details>
 
       <button
         type="submit"

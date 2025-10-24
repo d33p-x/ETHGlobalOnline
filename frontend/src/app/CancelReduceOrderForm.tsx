@@ -94,22 +94,6 @@ export function CancelReduceOrderForm({
   return (
     <form onSubmit={handleSubmit}>
       <h3>Cancel / Reduce Order</h3>
-      {/* ... (Instructions div can remain) ... */}
-      <div className="instructions-box">
-        <small className="instructions-text">
-          <strong>Instructions:</strong>
-          <br />
-          1. Enter the Token 0 (sold) and Token 1 (bought) addresses for the
-          market.
-          <br />
-          2. Enter the Order ID you want to modify (from the Order List above).
-          <br />
-          3. Enter the amount of Token 0 you want to cancel/reduce. To cancel
-          fully, enter the remaining amount.
-          <br />
-          4. Only the original order creator (maker) can cancel/reduce.
-        </small>
-      </div>
 
       {/* 5. Remove the input fields for token0 and token1 */}
       {/* <div>
