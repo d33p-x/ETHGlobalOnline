@@ -110,11 +110,11 @@ export function SupportedTokens() {
       {isLoading ? (
         <p>Loading tokens...</p>
       ) : error ? (
-        <p style={{ color: "red" }}>{error}</p>
+        <p className="error-message">{error}</p>
       ) : tokenArray.length === 0 ? (
         <p>No price feeds have been set yet.</p>
       ) : (
-        <ul style={{ fontSize: "12px", fontFamily: "monospace" }}>
+        <ul className="token-list">
           {tokenArray.map((info) => (
             <TokenRow key={info.address} address={info.address} />
           ))}

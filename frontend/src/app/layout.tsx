@@ -27,7 +27,7 @@ export default async function RootLayout(props: { children: ReactNode }) {
       <body className={inter.className}>
         <Providers initialState={initialState}>
           <Header /> {/* <-- 2. Add the Header here */}
-          <main style={{ padding: "1rem" }}>{props.children}</main>
+          <main className="main-content">{props.children}</main>
         </Providers>
       </body>
     </html>

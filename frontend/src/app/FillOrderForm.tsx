@@ -231,15 +231,8 @@ export function FillOrderForm({
   return (
     <form onSubmit={needsApproval ? handleApprove : handleFillOrder}>
       <h3>Fill Order (Buy {tokenInfoMap[token0]?.symbol ?? "Token"})</h3>
-      <div
-        style={{
-          marginBottom: "10px",
-          padding: "10px",
-          backgroundColor: "#f0f0f0",
-          color: "#000",
-        }}
-      >
-        <small style={{ color: "#000" }}>
+      <div className="instructions-box">
+        <small className="instructions-text">
           <strong>Instructions:</strong>
           <br />
           1. Enter Token 0 (to receive) and Token 1 (to spend) addresses from
@@ -266,9 +259,7 @@ export function FillOrderForm({
           />
         </label>
         {isConnected && token1 && token1 !== "0x" && (
-          <span
-            style={{ marginLeft: "10px", fontSize: "small", color: "#aaa" }}
-          >
+          <span className="balance-display">
             Balance:{" "}
             {isLoadingBalance
               ? "Loading..."
@@ -284,29 +275,24 @@ export function FillOrderForm({
       </div>
 
       {/* Debug Section */}
-      <div
-        style={{
-          border: "1px dashed grey",
-          padding: "5px",
-          margin: "10px 0",
-          fontSize: "10px",
-        }}
-      >
-        <p>DEBUG:</p>
-        <p>isConnected: {isConnected ? "true" : "false"}</p>
-        <p>userAddress: {userAddress?.toString()}</p>
-        <p>token0: {token0}</p>
-        <p>token1: {token1}</p>
-        <p>amount1: {amount1}</p>
-        <p>allowance Status: {allowanceStatus}</p>
-        <p>allowance isLoading: {isLoadingAllowance ? "true" : "false"}</p>
-        <p>
-          allowance Value: {allowance?.toString()} ({typeof allowance})
-        </p>
-        <p>allowance Error: {allowanceError?.message}</p>
-        <p>token1Decimals: {token1Decimals}</p>
-        <p>needsApproval State: {needsApproval ? "true" : "false"}</p>
-      </div>
+      <details className="debug-section">
+        <summary>Debug Information</summary>
+        <div className="debug-content">
+          <p>isConnected: {isConnected ? "true" : "false"}</p>
+          <p>userAddress: {userAddress?.toString()}</p>
+          <p>token0: {token0}</p>
+          <p>token1: {token1}</p>
+          <p>amount1: {amount1}</p>
+          <p>allowance Status: {allowanceStatus}</p>
+          <p>allowance isLoading: {isLoadingAllowance ? "true" : "false"}</p>
+          <p>
+            allowance Value: {allowance?.toString()} ({typeof allowance})
+          </p>
+          <p>allowance Error: {allowanceError?.message}</p>
+          <p>token1Decimals: {token1Decimals}</p>
+          <p>needsApproval State: {needsApproval ? "true" : "false"}</p>
+        </div>
+      </details>
 
       {/* Submit Button */}
       <button
@@ -328,12 +314,12 @@ export function FillOrderForm({
       )}
       {isApproving && <p>Processing approval transaction...</p>}
       {isApproved && !needsApproval && (
-        <p style={{ color: "green" }}>
+        <p className="success-message">
           Approval successful! You can now fill the order.
         </p>
       )}
       {approveStatus === "error" && (
-        <p style={{ color: "red" }}>
+        <p className="error-message">
           Approval Error:{" "}
           {(approveError as BaseError)?.shortMessage || approveError?.message}
         </p>
@@ -344,12 +330,12 @@ export function FillOrderForm({
       )}
       {isConfirming && <p>Processing fill order transaction...</p>}
       {isConfirmed && (
-        <p style={{ color: "green" }}>
+        <p className="success-message">
           Order filled successfully! Transaction hash: {fillOrderHash}
         </p>
       )}
       {fillOrderStatus === "error" && (
-        <p style={{ color: "red" }}>
+        <p className="error-message">
           Fill Order Error:{" "}
           {(fillOrderError as BaseError)?.shortMessage ||
             fillOrderError?.message}

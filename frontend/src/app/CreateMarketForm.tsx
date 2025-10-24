@@ -56,15 +56,8 @@ export function CreateMarketForm() {
   return (
     <form onSubmit={handleSubmit}>
       <h3>Create Market</h3>
-      <div
-        style={{
-          marginBottom: "10px",
-          padding: "10px",
-          backgroundColor: "#f0f0f0",
-          color: "#000",
-        }}
-      >
-        <small style={{ color: "#000" }}>
+      <div className="instructions-box">
+        <small className="instructions-text">
           <strong>Instructions:</strong>
           <br />
           1. Default addresses are WETH and USDC from deploy script
@@ -82,7 +75,7 @@ export function CreateMarketForm() {
             value={token0}
             onChange={(e) => setToken0(e.target.value as Address)}
             placeholder="0x... (from deploy script output)"
-            style={{ width: "400px" }}
+            className="form-input-wide"
           />
         </label>
       </div>
@@ -94,7 +87,7 @@ export function CreateMarketForm() {
             value={token1}
             onChange={(e) => setToken1(e.target.value as Address)}
             placeholder="0x... (from deploy script output)"
-            style={{ width: "400px" }}
+            className="form-input-wide"
           />
         </label>
       </div>
@@ -111,21 +104,21 @@ export function CreateMarketForm() {
         {status === "pending" && <p>Waiting for wallet approval...</p>}
         {isConfirming && <p>Transaction sent, confirming...</p>}
         {isConfirmed && (
-          <p style={{ color: "green" }}>
+          <p className="success-message">
             Market created successfully! Check the Market List above.
             <br />
             Transaction hash: {hash}
           </p>
         )}
         {status === "error" && (
-          <div style={{ color: "red" }}>
+          <div className="error-message">
             <p>
               <strong>Error:</strong>{" "}
               {(error as BaseError)?.shortMessage || error?.message}
             </p>
             <details>
               <summary>Full error details</summary>
-              <pre style={{ fontSize: "10px", overflow: "auto" }}>
+              <pre className="error-details">
                 {JSON.stringify(error, null, 2)}
               </pre>
             </details>

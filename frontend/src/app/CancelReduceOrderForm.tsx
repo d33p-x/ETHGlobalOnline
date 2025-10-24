@@ -95,15 +95,8 @@ export function CancelReduceOrderForm({
     <form onSubmit={handleSubmit}>
       <h3>Cancel / Reduce Order</h3>
       {/* ... (Instructions div can remain) ... */}
-      <div
-        style={{
-          marginBottom: "10px",
-          padding: "10px",
-          backgroundColor: "#f0f0f0",
-          color: "#000",
-        }}
-      >
-        <small style={{ color: "#000" }}>
+      <div className="instructions-box">
+        <small className="instructions-text">
           <strong>Instructions:</strong>
           <br />
           1. Enter the Token 0 (sold) and Token 1 (bought) addresses for the
@@ -176,13 +169,13 @@ export function CancelReduceOrderForm({
       )}
       {isConfirming && <p>Processing transaction...</p>}
       {isConfirmed && (
-        <p style={{ color: "green" }}>
+        <p className="success-message">
           Order cancelled/reduced successfully! Transaction hash:{" "}
           {cancelReduceHash}
         </p>
       )}
       {cancelReduceStatus === "error" && (
-        <p style={{ color: "red" }}>
+        <p className="error-message">
           Error:{" "}
           {(cancelReduceError as BaseError)?.shortMessage ||
             cancelReduceError?.message}

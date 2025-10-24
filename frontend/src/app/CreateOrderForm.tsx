@@ -234,15 +234,8 @@ export function CreateOrderForm({
     <form onSubmit={needsApproval ? handleApprove : handleCreateOrder}>
       {/* 3. Get symbol from the new 'tokenInfoMap' */}
       <h3>Create Order (Sell {tokenInfoMap[token0]?.symbol ?? "Token"})</h3>
-      <div
-        style={{
-          marginBottom: "10px",
-          padding: "10px",
-          backgroundColor: "#f0f0f0",
-          color: "#000",
-        }}
-      >
-        <small style={{ color: "#000" }}>
+      <div className="instructions-box">
+        <small className="instructions-text">
           <strong>Instructions:</strong>
           <br />
           1. Enter Token 0 (to sell) and Token 1 (to buy) addresses from the
@@ -269,9 +262,7 @@ export function CreateOrderForm({
           />
         </label>
         {isConnected && token0 && token0 !== "0x" && (
-          <span
-            style={{ marginLeft: "10px", fontSize: "small", color: "#aaa" }}
-          >
+          <span className="balance-display">
             Balance:{" "}
             {isLoadingBalance
               ? "Loading..."
@@ -309,28 +300,23 @@ export function CreateOrderForm({
         </label>
       </div>
 
-      <div
-        style={{
-          border: "1px dashed grey",
-          padding: "5px",
-          margin: "10px 0",
-          fontSize: "10px",
-        }}
-      >
-        <p>DEBUG:</p>
-        <p>isConnected: {isConnected ? "true" : "false"}</p>
-        <p>userAddress: {userAddress?.toString()}</p>
-        <p>token0: {token0}</p>
-        <p>amount0: {amount0}</p>
-        <p>allowance Status: {allowanceStatus}</p>
-        <p>allowance isLoading: {isLoadingAllowance ? "true" : "false"}</p>
-        <p>
-          allowance Value: {allowance?.toString()} ({typeof allowance})
-        </p>
-        <p>allowance Error: {allowanceError?.message}</p>
-        <p>token0Decimals: {token0Decimals}</p>
-        <p>needsApproval State: {needsApproval ? "true" : "false"}</p>
-      </div>
+      <details className="debug-section">
+        <summary>Debug Information</summary>
+        <div className="debug-content">
+          <p>isConnected: {isConnected ? "true" : "false"}</p>
+          <p>userAddress: {userAddress?.toString()}</p>
+          <p>token0: {token0}</p>
+          <p>amount0: {amount0}</p>
+          <p>allowance Status: {allowanceStatus}</p>
+          <p>allowance isLoading: {isLoadingAllowance ? "true" : "false"}</p>
+          <p>
+            allowance Value: {allowance?.toString()} ({typeof allowance})
+          </p>
+          <p>allowance Error: {allowanceError?.message}</p>
+          <p>token0Decimals: {token0Decimals}</p>
+          <p>needsApproval State: {needsApproval ? "true" : "false"}</p>
+        </div>
+      </details>
 
       <button
         type="submit"
@@ -351,12 +337,12 @@ export function CreateOrderForm({
       )}
       {isApproving && <p>Processing approval transaction...</p>}
       {isApproved && !needsApproval && (
-        <p style={{ color: "green" }}>
+        <p className="success-message">
           Approval successful! You can now create the order.
         </p>
       )}
       {approveStatus === "error" && (
-        <p style={{ color: "red" }}>
+        <p className="error-message">
           Approval Error:{" "}
           {(approveError as BaseError)?.shortMessage || approveError?.message}
         </p>
@@ -367,12 +353,12 @@ export function CreateOrderForm({
       )}
       {isConfirming && <p>Processing create order transaction...</p>}
       {isConfirmed && (
-        <p style={{ color: "green" }}>
+        <p className="success-message">
           Order created successfully! Transaction hash: {createOrderHash}
         </p>
       )}
       {createOrderStatus === "error" && (
-        <p style={{ color: "red" }}>
+        <p className="error-message">
           Create Order Error:{" "}
           {(createOrderError as BaseError)?.shortMessage ||
             createOrderError?.message}

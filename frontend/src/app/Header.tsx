@@ -11,9 +11,9 @@ function WalletConnect() {
   const { disconnect } = useDisconnect();
 
   return (
-    <div style={{ marginLeft: "auto" }}>
+    <div className="margin-left-auto">
       {account.status === "connected" ? (
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+        <div className="connected-account">
           <span>
             {account.addresses[0].substring(0, 6)}...
             {account.addresses[0].substring(account.addresses[0].length - 4)}
@@ -43,25 +43,14 @@ export function Header() {
   const { isConnected } = useAccount(); // <-- 1. Get connection status
 
   return (
-    <header
-      style={{
-        display: "flex",
-        alignItems: "center",
-        padding: "1rem",
-        borderBottom: "1px solid #333",
-        gap: "20px", // <-- 2. Add gap for new link
-      }}
-    >
-      <Link href="/" style={{ textDecoration: "none", color: "inherit" }}>
-        <h1 style={{ margin: 0, fontSize: "1.5rem" }}>P2P Exchange</h1>
+    <header className="header-container">
+      <Link href="/" className="header-link">
+        <h1 className="header-title">P2P Exchange</h1>
       </Link>
 
       {/* 3. Add new link */}
       {isConnected && (
-        <Link
-          href="/my-orders"
-          style={{ textDecoration: "none", color: "inherit" }}
-        >
+        <Link href="/my-orders" className="header-nav-link">
           My Orders
         </Link>
       )}

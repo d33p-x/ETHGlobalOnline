@@ -131,7 +131,7 @@ export function MarketList() {
   return (
     <div>
       <h3>Available Markets (Click to View)</h3>
-      {error && <p style={{ color: "red" }}>{error}</p>}
+      {error && <p className="error-message">{error}</p>}
       {markets.length === 0 && !error ? (
         <p>No markets created yet on the Anvil network.</p>
       ) : (
@@ -145,28 +145,15 @@ export function MarketList() {
               <Link
                 key={market.marketId}
                 href={`/market/${market.marketId}?token0=${market.token0}&token1=${market.token1}`}
-                style={{
-                  textDecoration: "none",
-                  color: "inherit",
-                  cursor: "pointer",
-                }}
+                className="market-link"
               >
-                <li
-                  style={{
-                    fontFamily: "monospace",
-                    fontSize: "12px",
-                    padding: "8px",
-                    border: "1px solid #333",
-                    marginBottom: "5px",
-                    borderRadius: "4px",
-                  }}
-                >
+                <li className="market-item">
                   {/* 3. Display symbols */}
                   <strong>
                     Pair: {symbol0} / {symbol1}
                   </strong>
                   <br />
-                  <span style={{ fontSize: "10px" }}>
+                  <span className="market-details-small">
                     Market ID: {market.marketId.substring(0, 10)}...
                     <br />
                     Tokens: {market.token0} / {market.token1}

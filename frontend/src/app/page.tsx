@@ -19,11 +19,11 @@ function App() {
       */}
       <MarketList />
       <hr />
-      <div style={{ display: "flex", gap: "20px" }}>
-        <div style={{ flex: 1 }}>
+      <div className="two-column-layout">
+        <div className="column">
           <CreateMarketForm />
         </div>
-        <div style={{ flex: 1 }}>
+        <div className="column">
           <SupportedTokens /> {/* <-- 3. Add the new component */}
         </div>
       </div>

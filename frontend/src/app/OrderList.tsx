@@ -397,13 +397,13 @@ export function OrderList({ marketId }: { marketId: string }) {
       ) : isLoading ? (
         <div>Loading orders for market {marketId.substring(0, 10)}...</div>
       ) : error ? (
-        <div style={{ color: "red" }}>Error loading orders: {error}</div>
+        <div className="error-message">Error loading orders: {error}</div>
       ) : orderArray.length === 0 ? (
         <p>No active orders found for this market.</p>
       ) : (
         <>
           <h4>Orders for Market {marketId.substring(0, 10)}... (Live)</h4>
-          <table border={1} style={{ fontSize: "12px", width: "100%" }}>
+          <table border={1} className="order-table">
             <thead>
               <tr>
                 <th>Order ID</th>

@@ -279,7 +279,7 @@ export function MyOrders() {
   }
 
   if (error) {
-    return <div style={{ color: "red" }}>{error}</div>;
+    return <div className="error-message">{error}</div>;
   }
 
   const openOrdersArray = Array.from(openOrders.values());
@@ -290,10 +290,10 @@ export function MyOrders() {
       {cancelStatus === "pending" && <p>Waiting for wallet confirmation...</p>}
       {isCancelling && <p>Processing cancellation...</p>}
       {isCancelled && (
-        <p style={{ color: "green" }}>Order cancelled successfully!</p>
+        <p className="success-message">Order cancelled successfully!</p>
       )}
       {cancelStatus === "error" && (
-        <p style={{ color: "red" }}>
+        <p className="error-message">
           Error:{" "}
           {(cancelError as BaseError)?.shortMessage || cancelError?.message}
         </p>
@@ -302,7 +302,7 @@ export function MyOrders() {
       {openOrdersArray.length === 0 ? (
         <p>You have no active orders.</p>
       ) : (
-        <table border={1} style={{ fontSize: "12px", width: "100%" }}>
+        <table border={1} className="order-table">
           <thead>
             <tr>
               <th>Order ID</th>
@@ -355,14 +355,14 @@ export function MyOrders() {
         </table>
       )}
 
-      <hr style={{ margin: "20px 0" }} />
+      <hr className="section-divider" />
 
       <h2>My Trade History (as Taker)</h2>
       {/* ... (rest of the component is the same) ... */}
       {filledOrders.length === 0 ? (
         <p>You have not filled any orders as a taker.</p>
       ) : (
-        <table border={1} style={{ fontSize: "12px", width: "100%" }}>
+        <table border={1} className="order-table">
           <thead>
             <tr>
               <th>Order ID Filled</th>
