@@ -5,7 +5,6 @@ import {
   useAccount,
   useWriteContract,
   useWaitForTransactionReceipt,
-  useReadContract,
   useBalance,
   usePublicClient,
   useChainId,
@@ -15,93 +14,13 @@ import {
   BaseError,
   parseUnits,
   formatUnits,
-  maxUint256,
 } from "viem";
-import { erc20Abi } from "viem";
 import { useTokenRegistryContext } from "@/app/TokenRegistryContext";
-import { getP2PAddress, getDeploymentBlock } from "./config";
-import { WrapUnwrapButton } from "./WrapUnwrap";
-
-import { useConfig } from "wagmi";
-import { readContract } from "wagmi/actions";
-
-const p2pAbi = [
-  {
-    type: "function",
-    name: "fillOrderExactAmountIn",
-    inputs: [
-      { name: "priceUpdate", type: "bytes[]" },
-      { name: "_token0", type: "address" },
-      { name: "_token1", type: "address" },
-      { name: "_amount1", type: "uint256" },
-    ],
-    outputs: [],
-    stateMutability: "payable",
-  },
-  {
-    type: "function",
-    name: "pyth",
-    inputs: [],
-    outputs: [{ name: "", type: "address" }],
-    stateMutability: "view",
-  },
-] as const;
-
-const pythAbi = [
-  {
-    type: "function",
-    name: "getUpdateFee",
-    inputs: [{ name: "updateData", type: "bytes[]" }],
-    outputs: [{ name: "feeAmount", type: "uint256" }],
-    stateMutability: "view",
-  },
-] as const;
-
-// ABI for OrderCreated event to check liquidity
-const orderEventAbi = [
-  {
-    type: "event",
-    name: "OrderCreated",
-    inputs: [
-      { name: "marketId", type: "bytes32", indexed: true },
-      { name: "maker", type: "address", indexed: true },
-      { name: "token0", type: "address", indexed: false },
-      { name: "token1", type: "address", indexed: false },
-      { name: "amount0", type: "uint256", indexed: false },
-      { name: "maxPrice", type: "uint256", indexed: false },
-      { name: "minPrice", type: "uint256", indexed: false },
-      { name: "orderId", type: "uint256", indexed: false },
-    ],
-    anonymous: false,
-  },
-  {
-    type: "event",
-    name: "OrderReducedOrCancelled",
-    inputs: [
-      { name: "marketId", type: "bytes32", indexed: true },
-      { name: "maker", type: "address", indexed: false },
-      { name: "token0", type: "address", indexed: false },
-      { name: "token1", type: "address", indexed: false },
-      { name: "orderId", type: "uint256", indexed: true },
-      { name: "amount0Closed", type: "uint256", indexed: false },
-    ],
-    anonymous: false,
-  },
-  {
-    type: "event",
-    name: "OrderFilled",
-    inputs: [
-      { name: "marketId", type: "bytes32", indexed: true },
-      { name: "token0", type: "address", indexed: false },
-      { name: "token1", type: "address", indexed: false },
-      { name: "orderId", type: "uint256", indexed: true },
-      { name: "amount0Filled", type: "uint256", indexed: false },
-      { name: "amount1Spent", type: "uint256", indexed: false },
-      { name: "taker", type: "address", indexed: true },
-    ],
-    anonymous: false,
-  },
-] as const;
+import { getP2PAddress } from "./config";
+import { p2pAbi } from "@/lib/contracts/abis";
+import { useTokenApproval } from "@/hooks/useTokenApproval";
+import { usePythPrice } from "@/hooks/usePythPrice";
+import { checkMarketLiquidity } from "@/hooks/useContractEvents";
 
 export function FillOrderForm({
   defaultToken0,
@@ -112,23 +31,14 @@ export function FillOrderForm({
   defaultToken1: Address;
   marketId: string;
 }) {
-  const config = useConfig();
-  const { address: userAddress, isConnected, chain } = useAccount();
+  const { address: userAddress, isConnected } = useAccount();
   const chainId = useChainId();
   const p2pAddress = getP2PAddress(chainId);
   const { tokenInfoMap } = useTokenRegistryContext();
 
   const [amount1, setAmount1] = useState("");
-  const [needsApproval, setNeedsApproval] = useState(false);
   const [hasLiquidity, setHasLiquidity] = useState(true);
   const [isCheckingLiquidity, setIsCheckingLiquidity] = useState(true);
-  const [pythUpdateData, setPythUpdateData] = useState<{
-    priceUpdateArray: `0x${string}`[];
-    fee: bigint;
-  } | null>(null);
-  const [isPythLoading, setIsPythLoading] = useState(false);
-  const [pythError, setPythError] = useState<string | null>(null);
-  const [pythContractAddress, setPythContractAddress] = useState<Address | null>(null);
 
   const token0 = defaultToken0;
   const token1 = defaultToken1;
@@ -141,6 +51,33 @@ export function FillOrderForm({
   const isWethMarket = tokenInfo1?.symbol === "WETH";
 
   const client = usePublicClient({ chainId: chainId });
+
+  // Use shared approval hook
+  const {
+    needsApproval,
+    approve,
+    approveHash,
+    approveError,
+    approveStatus,
+    isApproving,
+    isApproved,
+  } = useTokenApproval({
+    tokenAddress: token1,
+    spenderAddress: p2pAddress,
+    amount: amount1,
+    tokenDecimals: token1Decimals,
+  });
+
+  // Use shared Pyth price hook
+  const {
+    pythUpdateData,
+    isLoading: isPythLoading,
+    error: pythError,
+    fetchFreshPythData,
+  } = usePythPrice({
+    priceFeedIds: [tokenInfo0?.priceFeedId, tokenInfo1?.priceFeedId].filter(Boolean) as string[],
+    enabled: !!tokenInfo0?.priceFeedId && !!tokenInfo1?.priceFeedId,
+  });
 
   const {
     data: balanceData,
@@ -156,50 +93,18 @@ export function FillOrderForm({
   });
 
   const {
-    data: allowance,
-    refetch: refetchAllowance,
-    isLoading: isLoadingAllowance,
-  } = useReadContract({
-    address: token1,
-    abi: erc20Abi,
-    functionName: "allowance",
-    args: userAddress && p2pAddress ? [userAddress, p2pAddress] : undefined,
-    chainId: chainId,
-    query: {
-      enabled:
-        isConnected &&
-        !!userAddress &&
-        !!token1 &&
-        token1 !== "0x" &&
-        !!p2pAddress &&
-        !!amount1 &&
-        chain?.id === chainId,
-    },
-  });
-
-  const {
-    data: approveHash,
-    error: approveError,
-    status: approveStatus,
-    writeContract: approveWriteContract,
-  } = useWriteContract();
-
-  const {
     data: fillOrderHash,
     error: fillOrderError,
     status: fillOrderStatus,
     writeContract: fillOrderWriteContract,
   } = useWriteContract();
 
-  const { isLoading: isApproving, isSuccess: isApproved } =
-    useWaitForTransactionReceipt({ hash: approveHash });
   const {
     isLoading: isConfirming,
     isSuccess: isConfirmed,
   } = useWaitForTransactionReceipt({
     hash: fillOrderHash,
     query: {
-      // Increase retry attempts and add more time
       retry: 10,
     }
   });
@@ -214,240 +119,32 @@ export function FillOrderForm({
 
     const checkLiquidity = async () => {
       setIsCheckingLiquidity(true);
-      try {
-        // Get current block and deployment block from config
-        const latestBlock = await client.getBlockNumber();
-        const fromBlock = getDeploymentBlock(chainId);
-
-        // Fetch all order events for this market
-        const createdLogs = await client.getLogs({
-          address: p2pAddress,
-          event: orderEventAbi[0], // OrderCreated
-          args: { marketId: marketId as `0x${string}` },
-          fromBlock,
-          toBlock: latestBlock,
-        });
-
-        const cancelledLogs = await client.getLogs({
-          address: p2pAddress,
-          event: orderEventAbi[1], // OrderReducedOrCancelled
-          args: { marketId: marketId as `0x${string}` },
-          fromBlock,
-          toBlock: latestBlock,
-        });
-
-        const filledLogs = await client.getLogs({
-          address: p2pAddress,
-          event: orderEventAbi[2], // OrderFilled
-          args: { marketId: marketId as `0x${string}` },
-          fromBlock,
-          toBlock: latestBlock,
-        });
-
-        // Build order map
-        const orderMap = new Map<bigint, { remainingAmount0: bigint }>();
-
-        // Process created orders
-        for (const log of createdLogs) {
-          const orderId = log.args.orderId!;
-          const amount0 = log.args.amount0!;
-          orderMap.set(orderId, { remainingAmount0: amount0 });
-        }
-
-        // Process cancellations/reductions
-        for (const log of cancelledLogs) {
-          const orderId = log.args.orderId!;
-          const amount0Closed = log.args.amount0Closed!;
-          const existing = orderMap.get(orderId);
-          if (existing) {
-            existing.remainingAmount0 -= amount0Closed;
-            if (existing.remainingAmount0 <= 0n) {
-              orderMap.delete(orderId);
-            }
-          }
-        }
-
-        // Process fills
-        for (const log of filledLogs) {
-          const orderId = log.args.orderId!;
-          const amount0Filled = log.args.amount0Filled!;
-          const existing = orderMap.get(orderId);
-          if (existing) {
-            existing.remainingAmount0 -= amount0Filled;
-            if (existing.remainingAmount0 <= 0n) {
-              orderMap.delete(orderId);
-            }
-          }
-        }
-
-        // Check if there are any orders with remaining amount > 0
-        const hasActiveOrders = Array.from(orderMap.values()).some(
-          (order) => order.remainingAmount0 > 0n
-        );
-
-        setHasLiquidity(hasActiveOrders);
-      } catch (error) {
-        console.error("Error checking liquidity:", error);
-        setHasLiquidity(false);
-      } finally {
-        setIsCheckingLiquidity(false);
-      }
+      const liquidity = await checkMarketLiquidity(client, p2pAddress, marketId, chainId);
+      setHasLiquidity(liquidity);
+      setIsCheckingLiquidity(false);
     };
 
     checkLiquidity();
   }, [client, marketId, p2pAddress, chainId]);
 
-  useEffect(() => {
-    if (allowance === undefined || !amount1 || !token1Decimals) {
-      if (needsApproval) {
-        setNeedsApproval(false);
-      }
-      return;
-    }
-
-    try {
-      const requiredAmount = parseUnits(amount1, token1Decimals);
-      const shouldNeedApproval = allowance < requiredAmount;
-      if (needsApproval !== shouldNeedApproval) {
-        setNeedsApproval(shouldNeedApproval);
-      }
-    } catch (error) {
-      if (needsApproval) {
-        setNeedsApproval(false);
-      }
-    }
-  }, [allowance, amount1, token1Decimals, needsApproval]);
-
-  useEffect(() => {
-    if (isApproved) {
-      refetchAllowance();
-    }
-  }, [isApproved, refetchAllowance]);
-
-  // Fetch Pyth contract address once
-  useEffect(() => {
-    if (!p2pAddress || pythContractAddress) return;
-
-    const fetchPythContractAddress = async () => {
-      try {
-        const address = await readContract(config, {
-          address: p2pAddress,
-          abi: p2pAbi,
-          functionName: "pyth",
-          chainId,
-        });
-        setPythContractAddress(address);
-      } catch (error) {
-        console.error("Error fetching Pyth contract address:", error);
-      }
-    };
-
-    fetchPythContractAddress();
-  }, [p2pAddress, config, chainId, pythContractAddress]);
-
-  // Fetch Pyth price data every 5 seconds
-  useEffect(() => {
-    if (!tokenInfo0?.priceFeedId || !tokenInfo1?.priceFeedId || !pythContractAddress) {
-      return;
-    }
-
-    const fetchPythData = async () => {
-      // Only show loading on initial fetch
-      if (!pythUpdateData) {
-        setIsPythLoading(true);
-      }
-      setPythError(null);
-
-      try {
-        // Fetch only the prices for token0 and token1 in parallel with fee calculation
-        const priceFeedsUrl = `https://hermes.pyth.network/api/latest_vaas?ids[]=${tokenInfo0.priceFeedId}&ids[]=${tokenInfo1.priceFeedId}`;
-
-        const [response] = await Promise.all([
-          fetch(priceFeedsUrl)
-        ]);
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch Pyth data: ${response.statusText}`);
-        }
-
-        const pythData = await response.json();
-
-        const priceUpdateArray = pythData.map(
-          (vaa: string) => ("0x" + Buffer.from(vaa, "base64").toString("hex")) as `0x${string}`
-        );
-
-        // Get update fee (using cached contract address)
-        const fee = await readContract(config, {
-          address: pythContractAddress,
-          abi: pythAbi,
-          functionName: "getUpdateFee",
-          args: [priceUpdateArray],
-          chainId,
-        });
-
-        setPythUpdateData({
-          priceUpdateArray,
-          fee,
-        });
-        setIsPythLoading(false);
-      } catch (error) {
-        console.error("Error fetching Pyth data:", error);
-        setPythError(error instanceof Error ? error.message : "Failed to fetch price data");
-        setIsPythLoading(false);
-      }
-    };
-
-    // Fetch immediately
-    fetchPythData();
-
-    // Then fetch every 5 seconds
-    const interval = setInterval(fetchPythData, 5000);
-
-    return () => clearInterval(interval);
-  }, [tokenInfo0?.priceFeedId, tokenInfo1?.priceFeedId, pythContractAddress, config, chainId, pythUpdateData]);
-
   const handleApprove = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token1 || !amount1) return;
-
-    approveWriteContract({
-      address: token1,
-      abi: erc20Abi,
-      functionName: "approve",
-      args: [p2pAddress, maxUint256],
-    });
+    approve();
   };
 
   const handleFillOrder = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (needsApproval || !token0 || !token1 || !amount1 || !tokenInfo0?.priceFeedId || !tokenInfo1?.priceFeedId || !pythContractAddress) {
-      console.log("Cannot fill order: missing requirements");
+    if (needsApproval || !token0 || !token1 || !amount1 || !tokenInfo0?.priceFeedId || !tokenInfo1?.priceFeedId) {
       return;
     }
 
     try {
-      // Fetch fresh Pyth data right before submitting transaction
-      const priceFeedsUrl = `https://hermes.pyth.network/api/latest_vaas?ids[]=${tokenInfo0.priceFeedId}&ids[]=${tokenInfo1.priceFeedId}`;
-
-      const response = await fetch(priceFeedsUrl);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch fresh Pyth data: ${response.statusText}`);
+      // Fetch fresh Pyth data right before transaction
+      const freshData = await fetchFreshPythData();
+      if (!freshData) {
+        throw new Error("Failed to fetch Pyth price data");
       }
-
-      const pythData = await response.json();
-      const freshPriceUpdateArray = pythData.map(
-        (vaa: string) => ("0x" + Buffer.from(vaa, "base64").toString("hex")) as `0x${string}`
-      );
-
-      // Get fresh update fee
-      const freshFee = await readContract(config, {
-        address: pythContractAddress,
-        abi: pythAbi,
-        functionName: "getUpdateFee",
-        args: [freshPriceUpdateArray],
-        chainId,
-      });
 
       const formattedAmount1 = parseUnits(amount1, token1Decimals);
 
@@ -455,8 +152,8 @@ export function FillOrderForm({
         address: p2pAddress,
         abi: p2pAbi,
         functionName: "fillOrderExactAmountIn",
-        args: [freshPriceUpdateArray, token0, token1, formattedAmount1],
-        value: freshFee,
+        args: [freshData.priceUpdateArray, token0, token1, formattedAmount1],
+        value: freshData.fee,
       });
     } catch (err) {
       console.error("An error occurred in handleFillOrder:", err);

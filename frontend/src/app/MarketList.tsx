@@ -13,61 +13,7 @@ import { getP2PAddress, getDeploymentBlock } from "./config";
 import Link from "next/link";
 import { useTokenRegistryContext } from "./TokenRegistryContext";
 import { CreateMarketModal } from "./CreateMarketModal";
-
-const p2pAbi = [
-  {
-    type: "event",
-    name: "MarketCreated",
-    inputs: [
-      { name: "marketId", type: "bytes32", indexed: false },
-      { name: "token0", type: "address", indexed: false },
-      { name: "token1", type: "address", indexed: false },
-    ],
-    anonymous: false,
-  },
-  {
-    type: "event",
-    name: "OrderCreated",
-    inputs: [
-      { name: "marketId", type: "bytes32", indexed: true },
-      { name: "maker", type: "address", indexed: true },
-      { name: "token0", type: "address", indexed: false },
-      { name: "token1", type: "address", indexed: false },
-      { name: "amount0", type: "uint256", indexed: false },
-      { name: "maxPrice", type: "uint256", indexed: false },
-      { name: "minPrice", type: "uint256", indexed: false },
-      { name: "orderId", type: "uint256", indexed: false },
-    ],
-    anonymous: false,
-  },
-  {
-    type: "event",
-    name: "OrderFilled",
-    inputs: [
-      { name: "marketId", type: "bytes32", indexed: true },
-      { name: "token0", type: "address", indexed: false },
-      { name: "token1", type: "address", indexed: false },
-      { name: "orderId", type: "uint256", indexed: true },
-      { name: "amount0Filled", type: "uint256", indexed: false },
-      { name: "amount1Spent", type: "uint256", indexed: false },
-      { name: "taker", type: "address", indexed: true },
-    ],
-    anonymous: false,
-  },
-  {
-    type: "event",
-    name: "OrderReducedOrCancelled",
-    inputs: [
-      { name: "marketId", type: "bytes32", indexed: true },
-      { name: "maker", type: "address", indexed: false },
-      { name: "token0", type: "address", indexed: false },
-      { name: "token1", type: "address", indexed: false },
-      { name: "orderId", type: "uint256", indexed: true },
-      { name: "amount0Closed", type: "uint256", indexed: false },
-    ],
-    anonymous: false,
-  },
-] as const;
+import { p2pAbi } from "@/lib/contracts/abis";
 
 type Market = {
   marketId: string;

@@ -6,6 +6,7 @@ import { type Address } from "viem";
 import { useState, useEffect } from "react";
 import { usePublicClient, useChainId } from "wagmi";
 import { getP2PAddress, getDeploymentBlock } from "@/app/config";
+import { p2pAbi } from "@/lib/contracts/abis";
 
 // --- 1. Import your token config and the new chart component ---
 import { useTokenRegistryContext } from "@/app/TokenRegistryContext";
@@ -16,34 +17,6 @@ import { WrapUnwrapButton } from "@/app/WrapUnwrap";
 import { TradingInterface } from "@/app/TradingInterface";
 import { OrderList } from "@/app/OrderList";
 import { TradesList } from "@/app/TradesList";
-
-const p2pAbi = [
-  {
-    type: "event",
-    name: "MarketCreated",
-    inputs: [
-      { name: "marketId", type: "bytes32", indexed: false },
-      { name: "token0", type: "address", indexed: false },
-      { name: "token1", type: "address", indexed: false },
-    ],
-    anonymous: false,
-  },
-  {
-    type: "function",
-    name: "markets",
-    inputs: [{ name: "", type: "bytes32" }],
-    outputs: [
-      { name: "token0", type: "address" },
-      { name: "token1", type: "address" },
-      { name: "decimals0", type: "uint8" },
-      { name: "decimals1", type: "uint8" },
-      { name: "headId", type: "uint256" },
-      { name: "tailId", type: "uint256" },
-      { name: "totalLiquidity", type: "uint256" },
-    ],
-    stateMutability: "view",
-  },
-] as const;
 
 type AvailableMarket = {
   marketId: string;

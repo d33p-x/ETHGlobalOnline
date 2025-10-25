@@ -796,8 +796,15 @@ button[style*="sellButton"]:hover:not(:disabled) {
   box-shadow: 0 0 30px rgba(255, 0, 128, 0.4) !important;
 }
 
-/* Smooth Transitions */
-* {
+/* Smooth Transitions - Apply selectively for better performance */
+button,
+input,
+select,
+textarea,
+a,
+.card,
+.market-item,
+.order-table tbody tr {
   transition:
     border-color 0.3s ease,
     box-shadow 0.3s ease;

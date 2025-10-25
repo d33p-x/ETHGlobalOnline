@@ -25,7 +25,7 @@ export function TradingInterface({
         <button
           style={{
             ...styles.tab,
-            ...(activeTab === "buy" ? styles.tabActive : {}),
+            ...(activeTab === "buy" ? styles.tabActiveBuy : {}),
           }}
           onClick={() => setActiveTab("buy")}
         >
@@ -34,7 +34,7 @@ export function TradingInterface({
         <button
           style={{
             ...styles.tab,
-            ...(activeTab === "sell" ? styles.tabActive : {}),
+            ...(activeTab === "sell" ? styles.tabActiveSell : {}),
           }}
           onClick={() => setActiveTab("sell")}
         >
@@ -99,11 +99,18 @@ const styles = {
     position: "relative" as const,
   } as React.CSSProperties,
 
-  tabActive: {
+  tabActiveBuy: {
     color: "#00f5ff",
     background: "var(--bg-card)",
     borderBottom: "2px solid #00f5ff",
     boxShadow: "0 0 20px rgba(0, 245, 255, 0.3)",
+  } as React.CSSProperties,
+
+  tabActiveSell: {
+    color: "#ff0080",
+    background: "var(--bg-card)",
+    borderBottom: "2px solid #ff0080",
+    boxShadow: "0 0 20px rgba(255, 0, 128, 0.3)",
   } as React.CSSProperties,
 
   tabContent: {

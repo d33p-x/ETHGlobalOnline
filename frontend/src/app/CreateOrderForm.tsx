@@ -1,61 +1,24 @@
 // src/app/CreateOrderForm.tsx
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   useAccount,
   useWriteContract,
   useWaitForTransactionReceipt,
-  useReadContract,
   useBalance,
   useChainId,
-  useConfig,
 } from "wagmi";
-import { readContract } from "wagmi/actions";
 import {
   type Address,
   BaseError,
   parseUnits,
   formatUnits,
-  maxUint256,
 } from "viem";
-import { erc20Abi } from "viem";
 import { useTokenRegistryContext } from "@/app/TokenRegistryContext";
 import { getP2PAddress } from "./config";
-import { WrapUnwrapButton } from "./WrapUnwrap";
-
-const p2pAbi = [
-  {
-    type: "function",
-    name: "createOrder",
-    inputs: [
-      { name: "_token0", type: "address" },
-      { name: "_token1", type: "address" },
-      { name: "_amount0", type: "uint256" },
-      { name: "_maxPrice", type: "uint256" },
-      { name: "_minPrice", type: "uint256" },
-      { name: "priceUpdate", type: "bytes[]" },
-    ],
-    outputs: [],
-    stateMutability: "payable",
-  },
-  {
-    type: "function",
-    name: "pyth",
-    inputs: [],
-    outputs: [{ name: "", type: "address" }],
-    stateMutability: "view",
-  },
-] as const;
-
-const pythAbi = [
-  {
-    type: "function",
-    name: "getUpdateFee",
-    inputs: [{ name: "updateData", type: "bytes[]" }],
-    outputs: [{ name: "feeAmount", type: "uint256" }],
-    stateMutability: "view",
-  },
-] as const;
+import { p2pAbi } from "@/lib/contracts/abis";
+import { useTokenApproval } from "@/hooks/useTokenApproval";
+import { usePythPrice } from "@/hooks/usePythPrice";
 
 export function CreateOrderForm({
   defaultToken0,
@@ -64,8 +27,7 @@ export function CreateOrderForm({
   defaultToken0: Address;
   defaultToken1: Address;
 }) {
-  const config = useConfig();
-  const { address: userAddress, isConnected, chain } = useAccount();
+  const { address: userAddress, isConnected } = useAccount();
   const chainId = useChainId();
   const p2pAddress = getP2PAddress(chainId);
   const { tokenInfoMap } = useTokenRegistryContext();
@@ -73,8 +35,6 @@ export function CreateOrderForm({
   const [amount0, setAmount0] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [minPrice, setMinPrice] = useState("");
-  const [needsApproval, setNeedsApproval] = useState(false);
-  const [pythContractAddress, setPythContractAddress] = useState<Address | null>(null);
 
   const token0 = defaultToken0;
   const token1 = defaultToken1;
@@ -86,13 +46,32 @@ export function CreateOrderForm({
 
   const isWethMarket = tokenInfo0?.symbol === "WETH";
 
-  // Calculate current exchange rate for display
-  // Note: lastPrice is not available in TokenInfo, would need to be fetched from Pyth oracle
-  const getCurrentExchangeRate = (): number | null => {
-    return null;
-  };
+  // Use shared approval hook
+  const {
+    needsApproval,
+    approve,
+    approveHash,
+    approveError,
+    approveStatus,
+    isApproving,
+    isApproved,
+  } = useTokenApproval({
+    tokenAddress: token0,
+    spenderAddress: p2pAddress,
+    amount: amount0,
+    tokenDecimals: token0Decimals,
+  });
 
-  const currentExchangeRate = getCurrentExchangeRate();
+  // Use shared Pyth price hook
+  const {
+    pythUpdateData,
+    isLoading: isPythLoading,
+    error: pythError,
+    fetchFreshPythData,
+  } = usePythPrice({
+    priceFeedIds: tokenInfo0?.priceFeedId ? [tokenInfo0.priceFeedId] : [],
+    enabled: !!tokenInfo0?.priceFeedId,
+  });
 
   const {
     data: balanceData,
@@ -108,132 +87,32 @@ export function CreateOrderForm({
   });
 
   const {
-    data: allowance,
-    refetch: refetchAllowance,
-    isLoading: isLoadingAllowance,
-  } = useReadContract({
-    address: token0,
-    abi: erc20Abi,
-    functionName: "allowance",
-    args: userAddress && p2pAddress ? [userAddress, p2pAddress] : undefined,
-    chainId: chainId,
-    query: {
-      enabled:
-        isConnected &&
-        !!userAddress &&
-        !!token0 &&
-        token0 !== "0x" &&
-        !!p2pAddress &&
-        !!amount0 &&
-        chain?.id === chainId,
-    },
-  });
-
-  const {
-    data: approveHash,
-    error: approveError,
-    status: approveStatus,
-    writeContract: approveWriteContract,
-  } = useWriteContract();
-
-  const {
     data: createOrderHash,
     error: createOrderError,
     status: createOrderStatus,
     writeContract: createOrderWriteContract,
   } = useWriteContract();
 
-  const { isLoading: isApproving, isSuccess: isApproved } =
-    useWaitForTransactionReceipt({ hash: approveHash });
   const { isLoading: isConfirming, isSuccess: isConfirmed } =
     useWaitForTransactionReceipt({ hash: createOrderHash });
 
-  useEffect(() => {
-    if (allowance === undefined || !amount0 || !token0Decimals) {
-      if (needsApproval) {
-        setNeedsApproval(false);
-      }
-      return;
-    }
-
-    try {
-      const requiredAmount = parseUnits(amount0, token0Decimals);
-      const shouldNeedApproval = allowance < requiredAmount;
-      if (needsApproval !== shouldNeedApproval) {
-        setNeedsApproval(shouldNeedApproval);
-      }
-    } catch (error) {
-      if (needsApproval) {
-        setNeedsApproval(false);
-      }
-    }
-  }, [allowance, amount0, token0Decimals, needsApproval]);
-
-  useEffect(() => {
-    if (isApproved) {
-      refetchAllowance();
-    }
-  }, [isApproved, refetchAllowance]);
-
-  useEffect(() => {
-    if (!p2pAddress || pythContractAddress) return;
-
-    const fetchPythContractAddress = async () => {
-      try {
-        const address = await readContract(config, {
-          address: p2pAddress,
-          abi: p2pAbi,
-          functionName: "pyth",
-          chainId,
-        });
-        setPythContractAddress(address as Address);
-      } catch (error) {
-        console.error("Error fetching Pyth contract address:", error);
-      }
-    };
-
-    fetchPythContractAddress();
-  }, [p2pAddress, config, chainId, pythContractAddress]);
-
   const handleApprove = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token0 || !amount0) return;
-
-    approveWriteContract({
-      address: token0,
-      abi: erc20Abi,
-      functionName: "approve",
-      args: [p2pAddress, maxUint256],
-    });
+    approve();
   };
 
   const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (needsApproval || !token0 || !token1 || !amount0 || !tokenInfo0?.priceFeedId || !pythContractAddress) {
-      console.log("Cannot create order: missing requirements");
+    if (needsApproval || !token0 || !token1 || !amount0 || !tokenInfo0?.priceFeedId) {
       return;
     }
 
     try {
-      const priceFeedsUrl = `https://hermes.pyth.network/api/latest_vaas?ids[]=${tokenInfo0.priceFeedId}`;
-
-      const response = await fetch(priceFeedsUrl);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch fresh Pyth data: ${response.statusText}`);
+      // Fetch fresh Pyth data right before transaction
+      const freshData = await fetchFreshPythData();
+      if (!freshData) {
+        throw new Error("Failed to fetch Pyth price data");
       }
-
-      const pythData = await response.json();
-      const freshPriceUpdateArray = pythData.map(
-        (vaa: string) => ("0x" + Buffer.from(vaa, "base64").toString("hex")) as `0x${string}`
-      );
-
-      const freshFee = await readContract(config, {
-        address: pythContractAddress,
-        abi: pythAbi,
-        functionName: "getUpdateFee",
-        args: [freshPriceUpdateArray],
-        chainId,
-      });
 
       const formattedAmount0 = parseUnits(amount0, token0Decimals);
       const formattedMaxPrice = maxPrice ? parseUnits(maxPrice, 18) : 0n;
@@ -249,9 +128,9 @@ export function CreateOrderForm({
           formattedAmount0,
           formattedMaxPrice,
           formattedMinPrice,
-          freshPriceUpdateArray,
+          freshData.priceUpdateArray,
         ],
-        value: freshFee,
+        value: freshData.fee,
       });
     } catch (err) {
       console.error("An error occurred in handleCreateOrder:", err);
@@ -295,16 +174,6 @@ export function CreateOrderForm({
           Minimum order value: $10 USD
         </div>
       </div>
-
-      {/* Current Exchange Rate Info */}
-      {currentExchangeRate !== null && (
-        <div style={styles.infoBox}>
-          <span style={styles.infoIcon}>💱</span>
-          <div style={styles.infoText}>
-            Current rate: {currentExchangeRate.toFixed(8)} {token1Symbol} per {token0Symbol}
-          </div>
-        </div>
-      )}
 
       {/* Amount Input */}
       <div style={styles.inputGroup}>

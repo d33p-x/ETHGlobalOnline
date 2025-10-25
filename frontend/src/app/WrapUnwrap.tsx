@@ -1,6 +1,7 @@
 // frontend/src/app/WrapUnwrap.tsx
 "use client";
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import {
   useAccount,
   useWriteContract,
@@ -117,7 +118,8 @@ function WrapUnwrapModal({
     }
   };
 
-  return (
+  // Use portal to render modal at document body level to avoid positioning issues
+  const modalContent = (
     <div style={styles.modalOverlay} onClick={onClose}>
       <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
         <div style={styles.modalHeader}>
@@ -208,6 +210,11 @@ function WrapUnwrapModal({
       </div>
     </div>
   );
+
+  // Render modal at document body level using portal
+  return typeof document !== "undefined"
+    ? createPortal(modalContent, document.body)
+    : null;
 }
 
 const styles = {
@@ -233,7 +240,7 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    zIndex: 1000,
+    zIndex: 9999,
     backdropFilter: "blur(4px)",
   },
   modalContent: {
