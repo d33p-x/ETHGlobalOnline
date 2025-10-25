@@ -87,11 +87,9 @@ export function CreateOrderForm({
   const isWethMarket = tokenInfo0?.symbol === "WETH";
 
   // Calculate current exchange rate for display
-  const getCurrentExchangeRate = () => {
-    if (!tokenInfo0?.lastPrice || !tokenInfo1?.lastPrice) return null;
-    // Exchange rate = price0 / price1 (how much token1 per token0)
-    const rate = tokenInfo0.lastPrice / tokenInfo1.lastPrice;
-    return rate;
+  // Note: lastPrice is not available in TokenInfo, would need to be fetched from Pyth oracle
+  const getCurrentExchangeRate = (): number | null => {
+    return null;
   };
 
   const currentExchangeRate = getCurrentExchangeRate();

@@ -1,7 +1,7 @@
 // frontend/src/app/market/[marketId]/page.tsx
 "use client";
 
-import { useSearchParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { type Address } from "viem";
 import { useState, useEffect } from "react";
 import { usePublicClient, useChainId } from "wagmi";
@@ -59,19 +59,18 @@ export default function MarketPage({
   params: { marketId: string };
 }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const chainId = useChainId();
   const p2pAddress = getP2PAddress(chainId);
   const client = usePublicClient({ chainId });
   const { tokenInfoMap, isLoading } = useTokenRegistryContext();
+
+  const marketId = params.marketId;
 
   const [availableMarkets, setAvailableMarkets] = useState<AvailableMarket[]>([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [token0, setToken0] = useState<Address | undefined>();
   const [token1, setToken1] = useState<Address | undefined>();
   const [fetchingMarket, setFetchingMarket] = useState(true);
-
-  const marketId = params.marketId;
 
   // --- 3. Look up symbols from your tokenConfig (network-aware) ---
   const symbol0 = token0 ? tokenInfoMap[token0]?.symbol : undefined; // e.g., "WETH"

@@ -767,6 +767,10 @@ const styles = {
     borderRadius: "0.5rem",
   },
 
+  infoIcon: {
+    fontSize: "1rem",
+  },
+
   infoText: {
     fontSize: "0.75rem",
     color: "#00f5ff",
