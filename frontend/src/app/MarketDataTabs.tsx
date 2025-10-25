@@ -1,22 +1,16 @@
+// frontend/src/app/MarketDataTabs.tsx
 "use client";
 
 import { useState } from "react";
-import { type Address } from "viem";
-import { CreateOrderForm } from "./CreateOrderForm";
-import { FillOrderForm } from "./FillOrderForm";
+import { OrderList } from "./OrderList";
+import { TradesList } from "./TradesList";
 
-interface TradingInterfaceProps {
-  defaultToken0: Address;
-  defaultToken1: Address;
+interface MarketDataTabsProps {
   marketId: string;
 }
 
-export function TradingInterface({
-  defaultToken0,
-  defaultToken1,
-  marketId,
-}: TradingInterfaceProps) {
-  const [activeTab, setActiveTab] = useState<"buy" | "sell">("buy");
+export function MarketDataTabs({ marketId }: MarketDataTabsProps) {
+  const [activeTab, setActiveTab] = useState<"orderbook" | "trades">("orderbook");
 
   return (
     <div style={styles.container}>
@@ -25,36 +19,29 @@ export function TradingInterface({
         <button
           style={{
             ...styles.tab,
-            ...(activeTab === "buy" ? styles.tabActiveBuy : {}),
+            ...(activeTab === "orderbook" ? styles.tabActive : {}),
           }}
-          onClick={() => setActiveTab("buy")}
+          onClick={() => setActiveTab("orderbook")}
         >
-          Buy
+          Order Book
         </button>
         <button
           style={{
             ...styles.tab,
-            ...(activeTab === "sell" ? styles.tabActiveSell : {}),
+            ...(activeTab === "trades" ? styles.tabActive : {}),
           }}
-          onClick={() => setActiveTab("sell")}
+          onClick={() => setActiveTab("trades")}
         >
-          Sell
+          Recent Trades
         </button>
       </div>
 
       {/* Tab Content */}
       <div style={styles.tabContent}>
-        {activeTab === "buy" ? (
-          <FillOrderForm
-            defaultToken0={defaultToken0}
-            defaultToken1={defaultToken1}
-            marketId={marketId}
-          />
+        {activeTab === "orderbook" ? (
+          <OrderList marketId={marketId} />
         ) : (
-          <CreateOrderForm
-            defaultToken0={defaultToken0}
-            defaultToken1={defaultToken1}
-          />
+          <TradesList marketId={marketId} />
         )}
       </div>
     </div>
@@ -68,9 +55,9 @@ const styles = {
     border: "1px solid var(--border-color)",
     overflow: "hidden",
     boxShadow: "var(--shadow-lg)",
+    height: "100%",
     display: "flex",
     flexDirection: "column" as const,
-    height: "100%",
   } as React.CSSProperties,
 
   tabHeader: {
@@ -81,14 +68,14 @@ const styles = {
   } as React.CSSProperties,
 
   tab: {
-    padding: "1rem",
+    padding: "0.75rem",
     background: "transparent",
     borderTop: "none",
     borderLeft: "none",
     borderRight: "none",
     borderBottom: "2px solid transparent",
     color: "var(--text-muted)",
-    fontSize: "0.875rem",
+    fontSize: "0.8125rem",
     fontWeight: "600",
     cursor: "pointer",
     transition: "all 0.3s ease",
@@ -99,24 +86,17 @@ const styles = {
     position: "relative" as const,
   } as React.CSSProperties,
 
-  tabActiveBuy: {
-    color: "#00f5ff",
+  tabActive: {
+    color: "var(--accent-secondary)",
     background: "var(--bg-card)",
-    borderBottom: "2px solid #00f5ff",
-    boxShadow: "0 0 20px rgba(0, 245, 255, 0.3)",
-  } as React.CSSProperties,
-
-  tabActiveSell: {
-    color: "#ff0080",
-    background: "var(--bg-card)",
-    borderBottom: "2px solid #ff0080",
-    boxShadow: "0 0 20px rgba(255, 0, 128, 0.3)",
+    borderBottom: "2px solid var(--accent-secondary)",
+    boxShadow: "0 0 15px rgba(59, 130, 246, 0.2)",
   } as React.CSSProperties,
 
   tabContent: {
-    padding: "1.5rem",
-    overflow: "auto",
     flex: 1,
-    minHeight: 0,
+    overflow: "hidden",
+    display: "flex",
+    flexDirection: "column" as const,
   } as React.CSSProperties,
 };

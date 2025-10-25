@@ -1,8 +1,8 @@
-// frontend/src/app/TradesList.tsx
+// frontend/src/app/MyTrades.tsx
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePublicClient, useWatchContractEvent, useChainId } from "wagmi";
+import { usePublicClient, useAccount, useChainId } from "wagmi";
 import { type Address, formatUnits } from "viem";
 import { getP2PAddress, getDeploymentBlock } from "./config";
 
@@ -36,7 +36,7 @@ type Trade = {
   taker: Address;
   blockNumber: bigint;
   transactionHash: string;
-  timestamp?: number; // Optional: we'll try to get this from the block
+  timestamp?: number;
 };
 
 // Helper function to format numbers to max 4 decimals
@@ -47,8 +47,9 @@ function formatToMaxDecimals(value: string, maxDecimals: number = 4): string {
   return parseFloat(fixed).toString();
 }
 
-export function TradesList({ marketId }: { marketId: string }) {
+export function MyTrades({ marketId }: { marketId: string }) {
   const chainId = useChainId();
+  const { address, isConnected } = useAccount();
 
   const [trades, setTrades] = useState<Trade[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -59,9 +60,9 @@ export function TradesList({ marketId }: { marketId: string }) {
 
   const client = usePublicClient({ chainId: chainId });
 
-  // --- Fetch historical OrderFilled events ---
+  // --- Fetch historical OrderFilled events where user was the taker ---
   useEffect(() => {
-    if (!client || !marketId) {
+    if (!client || !marketId || !address) {
       setTrades([]);
       setIsLoading(false);
       return;
@@ -70,7 +71,7 @@ export function TradesList({ marketId }: { marketId: string }) {
     const fetchTradeLogs = async () => {
       setIsLoading(true);
       setError(null);
-      console.log(`Fetching trade logs for marketId: ${marketId}`);
+      console.log(`Fetching my trade logs for marketId: ${marketId}`);
       try {
         // Get current block number
         const latestBlock = await client.getBlockNumber();
@@ -80,7 +81,7 @@ export function TradesList({ marketId }: { marketId: string }) {
         const fromBlock = getDeploymentBlock(chainId);
 
         console.log(
-          `Fetching trade logs from block ${fromBlock} to ${latestBlock}`
+          `Fetching my trade logs from block ${fromBlock} to ${latestBlock}`
         );
 
         const filledLogs = await client.getLogs({
@@ -88,11 +89,12 @@ export function TradesList({ marketId }: { marketId: string }) {
           event: orderFilledEventAbi[0],
           args: {
             marketId: marketId as `0x${string}`,
+            taker: address, // Filter by user's address
           },
           fromBlock,
           toBlock: latestBlock,
         });
-        console.log(`Found ${filledLogs.length} OrderFilled logs`);
+        console.log(`Found ${filledLogs.length} OrderFilled logs for user`);
 
         // Convert logs to Trade objects
         const tradesData: Trade[] = [];
@@ -136,9 +138,9 @@ export function TradesList({ marketId }: { marketId: string }) {
 
         // Keep only the most recent 50 trades
         setTrades(tradesData.slice(0, 50));
-        console.log("Processed trades:", tradesData.length);
+        console.log("Processed my trades:", tradesData.length);
       } catch (err: any) {
-        console.error("Error fetching trade logs:", err);
+        console.error("Error fetching my trade logs:", err);
         setError(`Failed to fetch trades: ${err.shortMessage || err.message}`);
         setTrades([]);
       } finally {
@@ -147,65 +149,7 @@ export function TradesList({ marketId }: { marketId: string }) {
     };
 
     fetchTradeLogs();
-  }, [client, marketId]);
-
-  // --- Watch for new OrderFilled events ---
-  useWatchContractEvent({
-    address: getP2PAddress(chainId),
-    abi: orderFilledEventAbi,
-    eventName: "OrderFilled",
-    args: {
-      marketId: marketId as `0x${string}`,
-    },
-    enabled: !!marketId,
-    onLogs(logs) {
-      console.log("New OrderFilled event(s) detected:", logs);
-      setTrades((prevTrades) => {
-        const newTrades = [...prevTrades];
-        for (const log of logs) {
-          const {
-            orderId,
-            token0,
-            token1,
-            amount0Filled,
-            amount1Spent,
-            taker,
-          } = log.args;
-
-          if (
-            orderId !== undefined &&
-            token0 &&
-            token1 &&
-            amount0Filled !== undefined &&
-            amount1Spent !== undefined &&
-            taker &&
-            log.blockNumber &&
-            log.transactionHash
-          ) {
-            // Check if this transaction hash already exists to prevent duplicates
-            const exists = prevTrades.some(
-              (t) => t.transactionHash === log.transactionHash
-            );
-            if (!exists) {
-              // Add new trade at the beginning
-              newTrades.unshift({
-                orderId,
-                token0,
-                token1,
-                amount0Filled,
-                amount1Spent,
-                taker,
-                blockNumber: log.blockNumber,
-                transactionHash: log.transactionHash,
-              });
-            }
-          }
-        }
-        // Keep only the most recent 50 trades
-        return newTrades.slice(0, 50);
-      });
-    },
-  });
+  }, [client, marketId, address, chainId]);
 
   // Calculate price for each trade
   const getPrice = (trade: Trade): string => {
@@ -233,15 +177,20 @@ export function TradesList({ marketId }: { marketId: string }) {
         background: "var(--bg-card)",
       }}
     >
-
-      {!marketId ? (
+      {!isConnected ? (
+        <p style={{ fontSize: "0.875rem", padding: "1rem", color: "var(--text-muted)" }}>
+          Connect wallet to view your trades
+        </p>
+      ) : !marketId ? (
         <p style={{ fontSize: "0.875rem", padding: "1rem" }}>Market ID not found.</p>
       ) : isLoading ? (
         <div style={{ fontSize: "0.875rem", padding: "1rem" }}>Loading trades...</div>
       ) : error ? (
         <div className="error-message">Error: {error}</div>
       ) : trades.length === 0 ? (
-        <p style={{ fontSize: "0.875rem", padding: "1rem" }}>No trades yet.</p>
+        <p style={{ fontSize: "0.875rem", padding: "1rem", color: "var(--text-muted)" }}>
+          No trades yet
+        </p>
       ) : (
         <>
           {/* Header */}

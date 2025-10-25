@@ -467,21 +467,21 @@ const styles = {
   feeInfoBox: {
     display: "flex",
     alignItems: "center",
-    gap: "0.75rem",
-    padding: "0.875rem",
+    gap: "0.5rem",
+    padding: "0.5rem 0.625rem",
     background: "rgba(59, 130, 246, 0.05)",
     border: "1px solid rgba(59, 130, 246, 0.2)",
-    borderRadius: "0.5rem",
+    borderRadius: "0.375rem",
   },
 
   feeIcon: {
-    fontSize: "1.25rem",
+    fontSize: "1rem",
   },
 
   feeText: {
-    fontSize: "0.8125rem",
+    fontSize: "0.75rem",
     color: "#60a5fa",
-    lineHeight: "1.4",
+    lineHeight: "1.3",
   },
 
   infoBox: {

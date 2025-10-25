@@ -232,7 +232,7 @@ export function CreateOrderForm({
         <div style={styles.priceInputs}>
           <div style={styles.priceInputGroup}>
             <label style={styles.smallLabel}>
-              Min Exchange Rate (Optional)
+              Min Price (Optional)
               <span
                 style={{ ...styles.tooltip, marginLeft: "0.25rem" }}
                 title={`Minimum ${token1Symbol} per ${token0Symbol} you'll accept`}
@@ -254,7 +254,7 @@ export function CreateOrderForm({
 
           <div style={styles.priceInputGroup}>
             <label style={styles.smallLabel}>
-              Max Exchange Rate (Optional)
+              Max Price (Optional)
               <span
                 style={{ ...styles.tooltip, marginLeft: "0.25rem" }}
                 title={`Maximum ${token1Symbol} per ${token0Symbol} you'll accept`}
@@ -583,41 +583,41 @@ const styles = {
   feeInfoBox: {
     display: "flex",
     alignItems: "center",
-    gap: "0.75rem",
-    padding: "0.875rem",
+    gap: "0.5rem",
+    padding: "0.5rem 0.625rem",
     background: "rgba(16, 185, 129, 0.05)",
     border: "1px solid rgba(16, 185, 129, 0.2)",
-    borderRadius: "0.5rem",
+    borderRadius: "0.375rem",
   },
 
   feeIcon: {
-    fontSize: "1.25rem",
+    fontSize: "1rem",
   },
 
   feeText: {
-    fontSize: "0.8125rem",
+    fontSize: "0.75rem",
     color: "#10b981",
-    lineHeight: "1.4",
+    lineHeight: "1.3",
   },
 
   warningBox: {
     display: "flex",
     alignItems: "center",
-    gap: "0.75rem",
-    padding: "0.875rem",
+    gap: "0.5rem",
+    padding: "0.5rem 0.625rem",
     background: "rgba(245, 158, 11, 0.05)",
     border: "1px solid rgba(245, 158, 11, 0.2)",
-    borderRadius: "0.5rem",
+    borderRadius: "0.375rem",
   },
 
   infoIcon: {
-    fontSize: "1.25rem",
+    fontSize: "1rem",
   },
 
   infoText: {
-    fontSize: "0.875rem",
+    fontSize: "0.75rem",
     color: "#a855f7",
-    lineHeight: "1.4",
+    lineHeight: "1.3",
   },
 
   warningMessage: {

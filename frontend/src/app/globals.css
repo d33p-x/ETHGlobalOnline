@@ -206,9 +206,10 @@ p {
 
 /* Main Layout */
 .main-content {
-  padding: 2rem;
-  max-width: 1400px;
+  padding: 0;
+  max-width: 100%;
   margin: 0 auto;
+  width: 100%;
 }
 
 /* Two Column Layout */
@@ -704,7 +705,7 @@ hr {
   }
 
   .main-content {
-    padding: 1rem;
+    padding: 0;
   }
 
   form {
@@ -958,11 +959,32 @@ a,
 /* ============================================ */
 
 .market-page-container {
-  padding: 1.5rem;
+  padding: 1.5rem 0.5rem;
   min-height: calc(100vh - 80px);
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  max-width: 100%;
+  margin: 0 auto;
+  width: 100%;
+}
+
+@media (min-width: 1400px) {
+  .market-page-container {
+    padding: 1.5rem 1rem;
+  }
+}
+
+@media (min-width: 1600px) {
+  .market-page-container {
+    padding: 1.5rem 1.5rem;
+  }
+}
+
+@media (min-width: 1920px) {
+  .market-page-container {
+    padding: 1.5rem 2rem;
+  }
 }
 
 .market-header {
@@ -1017,7 +1039,34 @@ a,
   min-height: 400px;
 }
 
+@media (max-width: 1400px) {
+  /* Stack to 2 columns on medium screens: Chart on top, Market Data and Trading side by side */
+  .market-page-container > div:last-child {
+    grid-template-columns: 1fr 1fr !important;
+    grid-template-rows: auto auto;
+  }
+
+  .market-page-container > div:last-child > div:first-child {
+    grid-column: 1 / -1;
+  }
+}
+
 @media (max-width: 1024px) {
+  /* Stack everything on smaller screens */
+  .market-page-container > div:last-child {
+    grid-template-columns: 1fr !important;
+  }
+
+  .market-page-container > div:last-child > div {
+    height: auto !important;
+    min-height: 500px !important;
+    max-height: 650px !important;
+  }
+
+  .market-page-container {
+    padding: 1rem 0.5rem;
+  }
+
   .market-chart-grid {
     grid-template-columns: 1fr;
   }

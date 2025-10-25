@@ -15,8 +15,9 @@ import { WrapUnwrapButton } from "@/app/WrapUnwrap";
 
 // Import your existing components
 import { TradingInterface } from "@/app/TradingInterface";
-import { OrderList } from "@/app/OrderList";
-import { TradesList } from "@/app/TradesList";
+import { MarketDataTabs } from "@/app/MarketDataTabs";
+import { MyOrders } from "@/app/MyOrders";
+import { MyTrades } from "@/app/MyTrades";
 
 type AvailableMarket = {
   marketId: string;
@@ -51,6 +52,7 @@ export default function MarketPage({
     volume24h: "0.00",
     liquidity: "0.00",
   });
+  const [isNarrowScreen, setIsNarrowScreen] = useState(false);
 
   // --- 3. Look up symbols from your tokenConfig (network-aware) ---
   const symbol0 = token0 ? tokenInfoMap[token0]?.symbol : undefined; // e.g., "WETH"
@@ -254,6 +256,23 @@ export default function MarketPage({
     };
   }, [isDropdownOpen]);
 
+  // Detect screen width for responsive layout
+  useEffect(() => {
+    const checkScreenWidth = () => {
+      setIsNarrowScreen(window.innerWidth < 1400);
+    };
+
+    // Check on mount
+    checkScreenWidth();
+
+    // Add resize listener
+    window.addEventListener("resize", checkScreenWidth);
+
+    return () => {
+      window.removeEventListener("resize", checkScreenWidth);
+    };
+  }, []);
+
   if (isLoading || fetchingMarket) {
     return <div>Loading market information...</div>;
   }
@@ -274,7 +293,7 @@ export default function MarketPage({
           background: "rgba(26, 34, 65, 0.6)",
           border: "1px solid rgba(59, 130, 246, 0.2)",
           borderRadius: "0.75rem",
-          padding: "0.875rem 1.25rem",
+          padding: "0.75rem 1rem",
           marginBottom: "0.5rem",
           backdropFilter: "blur(10px)",
           position: "relative",
@@ -446,7 +465,7 @@ export default function MarketPage({
         </div>
       </div>
 
-      {/* Main Content Area: Chart | Forms on top, OrderBook below */}
+      {/* Main Content Layout */}
       <div
         style={{
           display: "flex",
@@ -456,66 +475,204 @@ export default function MarketPage({
           minHeight: 0,
         }}
       >
-        {/* Top Row: Chart (66%) | Forms (33%) */}
-        <div className="market-chart-grid">
-          {/* Chart - 66% width */}
+        {isNarrowScreen ? (
+          <>
+            {/* Narrow Screen Layout */}
+            {/* Top Row: Chart | Trading Interface */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 380px",
+                gap: "0.5rem",
+              }}
+            >
+              {/* Left: Chart */}
+              <div
+                style={{
+                  minWidth: 0,
+                  height: "calc(100vh - 520px)",
+                  minHeight: "400px",
+                  maxHeight: "600px",
+                  display: "flex",
+                  flexDirection: "column",
+                  borderRadius: "0.75rem",
+                  overflow: "hidden",
+                  background: "#1a2241",
+                }}
+              >
+                {chartBaseSymbol && chartQuoteSymbol && (
+                  <LightweightMarketChart
+                    baseSymbol={chartBaseSymbol}
+                    quoteSymbol={chartQuoteSymbol}
+                    chartType="Candlestick"
+                    interval="60"
+                  />
+                )}
+              </div>
+
+              {/* Right: Trading Interface */}
+              <div
+                style={{
+                  minWidth: 0,
+                  height: "calc(100vh - 520px)",
+                  minHeight: "400px",
+                  maxHeight: "600px",
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
+                <TradingInterface
+                  defaultToken0={token0}
+                  defaultToken1={token1}
+                  marketId={marketId}
+                />
+              </div>
+            </div>
+
+            {/* Middle Row: Market Data Tabs (Order Book / Recent Trades) - Full Width */}
+            <div
+              style={{
+                height: "300px",
+                minHeight: "250px",
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              <MarketDataTabs marketId={marketId} />
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Wide Screen Layout */}
+            {/* Top Row: Chart | Market Data | Trading */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 380px 380px",
+                gap: "0.5rem",
+              }}
+            >
+              {/* Left: Chart */}
+              <div
+                style={{
+                  minWidth: 0,
+                  height: "calc(100vh - 320px)",
+                  minHeight: "500px",
+                  maxHeight: "700px",
+                  display: "flex",
+                  flexDirection: "column",
+                  borderRadius: "0.75rem",
+                  overflow: "hidden",
+                  background: "#1a2241",
+                }}
+              >
+                {chartBaseSymbol && chartQuoteSymbol && (
+                  <LightweightMarketChart
+                    baseSymbol={chartBaseSymbol}
+                    quoteSymbol={chartQuoteSymbol}
+                    chartType="Candlestick"
+                    interval="60"
+                  />
+                )}
+              </div>
+
+              {/* Middle: Market Data Tabs (Order Book / Recent Trades) */}
+              <div
+                style={{
+                  minWidth: 0,
+                  height: "calc(100vh - 320px)",
+                  minHeight: "500px",
+                  maxHeight: "700px",
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
+                <MarketDataTabs marketId={marketId} />
+              </div>
+
+              {/* Right: Trading Interface */}
+              <div
+                style={{
+                  minWidth: 0,
+                  height: "calc(100vh - 320px)",
+                  minHeight: "500px",
+                  maxHeight: "700px",
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
+                <TradingInterface
+                  defaultToken0={token0}
+                  defaultToken1={token1}
+                  marketId={marketId}
+                />
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Bottom Row: My Orders | My Trades */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "0.5rem",
+            height: "220px",
+            minHeight: "180px",
+          }}
+        >
+          {/* My Orders */}
           <div
             style={{
-              minWidth: 0,
-              minHeight: "400px",
-              display: "flex",
-              flexDirection: "column",
-              borderRadius: "0.75rem",
+              background: "var(--bg-card)",
+              borderRadius: "1rem",
+              border: "1px solid var(--border-color)",
               overflow: "hidden",
-              background: "#1a2241",
-            }}
-          >
-            <LightweightMarketChart
-              baseSymbol={chartBaseSymbol}
-              quoteSymbol={chartQuoteSymbol}
-              chartType="Candlestick"
-              interval="60"
-            />
-          </div>
-
-          {/* Trading Interface - 33% width */}
-          <div
-            style={{
-              minWidth: 0,
+              boxShadow: "var(--shadow-lg)",
               display: "flex",
               flexDirection: "column",
             }}
           >
-            <TradingInterface
-              defaultToken0={token0}
-              defaultToken1={token1}
-              marketId={marketId}
-            />
-          </div>
-        </div>
-
-        {/* Bottom Row: OrderBook (50%) | Trades (50%) */}
-        <div className="market-orderbook-grid">
-          {/* OrderBook - left half */}
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              overflow: "auto",
-            }}
-          >
-            <OrderList marketId={marketId} />
+            <div
+              style={{
+                padding: "0.75rem 1rem",
+                borderBottom: "1px solid var(--border-color)",
+                background: "var(--bg-tertiary)",
+                fontSize: "0.8125rem",
+                fontWeight: "600",
+                color: "var(--text-primary)",
+              }}
+            >
+              My Orders
+            </div>
+            <MyOrders marketId={marketId} />
           </div>
 
-          {/* Recent Trades - right half */}
+          {/* My Trades */}
           <div
             style={{
+              background: "var(--bg-card)",
+              borderRadius: "1rem",
+              border: "1px solid var(--border-color)",
+              overflow: "hidden",
+              boxShadow: "var(--shadow-lg)",
               display: "flex",
               flexDirection: "column",
-              overflow: "auto",
             }}
           >
-            <TradesList marketId={marketId} />
+            <div
+              style={{
+                padding: "0.75rem 1rem",
+                borderBottom: "1px solid var(--border-color)",
+                background: "var(--bg-tertiary)",
+                fontSize: "0.8125rem",
+                fontWeight: "600",
+                color: "var(--text-primary)",
+              }}
+            >
+              My Trades
+            </div>
+            <MyTrades marketId={marketId} />
           </div>
         </div>
       </div>

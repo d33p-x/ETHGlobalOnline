@@ -93,24 +93,13 @@ type Order = {
 };
 type OrderMap = Map<bigint, Order>;
 
-type Fill = {
-  log: Log;
-  orderId: bigint;
-  amount0Filled: bigint;
-  amount1Spent: bigint;
-  taker: Address;
-  token0: Address;
-  token1: Address;
-};
-
-export function MyOrders() {
+export function MyOrders({ marketId }: { marketId: string }) {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { tokenInfoMap } = useTokenRegistryContext();
   const client = usePublicClient({ chainId: chainId });
 
   const [openOrders, setOpenOrders] = useState<OrderMap>(new Map());
-  const [filledOrders, setFilledOrders] = useState<Fill[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -150,39 +139,17 @@ export function MyOrders() {
       const latestBlock = await client.getBlockNumber();
       const fromBlock = getDeploymentBlock(chainId);
 
-      // 1. Fetch all orders CREATED by user
+      // 1. Fetch all orders CREATED by user for this market
       const createdLogs = await client.getLogs({
         address: getP2PAddress(chainId),
         event: p2pOrderEventsAbi[0], // OrderCreated
         args: {
+          marketId: marketId as `0x${string}`,
           maker: address, // <-- Filter by connected user!
         },
         fromBlock,
         toBlock: latestBlock,
       });
-
-      // 2. Fetch all orders FILLED by user (as taker)
-      const filledLogsAsTaker = await client.getLogs({
-        address: getP2PAddress(chainId),
-        event: p2pOrderEventsAbi[2], // OrderFilled
-        args: {
-          taker: address, // <-- Filter by connected user!
-        },
-        fromBlock,
-        toBlock: latestBlock,
-      });
-
-      // ... (rest of the log processing logic is the same) ...
-      const myFills: Fill[] = filledLogsAsTaker.map((log: any) => ({
-        log: log,
-        orderId: log.args.orderId!,
-        amount0Filled: log.args.amount0Filled!,
-        amount1Spent: log.args.amount1Spent!,
-        taker: log.args.taker!,
-        token0: log.args.token0!,
-        token1: log.args.token1!,
-      }));
-      setFilledOrders(myFills);
 
       // --- Process Open Orders ---
       const myOpenOrders: OrderMap = new Map();
@@ -205,6 +172,9 @@ export function MyOrders() {
       const reducedLogs = await client.getLogs({
         address: getP2PAddress(chainId),
         event: p2pOrderEventsAbi[1], // OrderReducedOrCancelled
+        args: {
+          marketId: marketId as `0x${string}`,
+        },
         fromBlock,
         toBlock: latestBlock,
       });
@@ -212,6 +182,9 @@ export function MyOrders() {
       const filledLogs = await client.getLogs({
         address: getP2PAddress(chainId),
         event: p2pOrderEventsAbi[2], // OrderFilled
+        args: {
+          marketId: marketId as `0x${string}`,
+        },
         fromBlock,
         toBlock: latestBlock,
       });
@@ -261,7 +234,7 @@ export function MyOrders() {
 
   // 8. Main useEffect now just calls the fetch function
   useEffect(() => {
-    if (client && address) {
+    if (client && address && marketId) {
       fetchMyLogs(client, address);
 
       // Also refresh every 10 seconds to catch fills by others
@@ -272,9 +245,8 @@ export function MyOrders() {
       return () => clearInterval(interval);
     } else {
       setOpenOrders(new Map());
-      setFilledOrders([]);
     }
-  }, [client, address, chainId]);
+  }, [client, address, chainId, marketId]);
 
   // 9. Handle function for the cancel button
   const handleCancelOrder = (order: Order) => {
@@ -293,131 +265,141 @@ export function MyOrders() {
     });
   };
 
-  if (!isConnected) {
-    return <div>Please connect your wallet to see your orders.</div>;
-  }
-
-  // ... (Loading and Error states as before) ...
-  if (isLoading && openOrders.size === 0) {
-    return <div>Loading your orders...</div>;
-  }
-
-  if (error) {
-    return <div className="error-message">{error}</div>;
-  }
-
   const openOrdersArray = Array.from(openOrders.values());
 
-  return (
-    <div>
-      <h2>My Open Orders</h2>
-      {cancelStatus === "pending" && <p>Waiting for wallet confirmation...</p>}
-      {isCancelling && <p>Processing cancellation...</p>}
-      {isCancelled && (
-        <p className="success-message">Order cancelled successfully!</p>
-      )}
-      {cancelStatus === "error" && (
-        <p className="error-message">
-          Error:{" "}
-          {(cancelError as BaseError)?.shortMessage || cancelError?.message}
-        </p>
-      )}
+  // Helper function to format numbers to max decimals
+  function formatToMaxDecimals(value: string, maxDecimals: number = 4): string {
+    const num = parseFloat(value);
+    if (isNaN(num)) return value;
+    const fixed = num.toFixed(maxDecimals);
+    return parseFloat(fixed).toString();
+  }
 
-      {openOrdersArray.length === 0 ? (
-        <p>You have no active orders.</p>
+  const formatPriceRange = (order: Order): string => {
+    const minPriceNum = order.minPrice > 0n ? Number(formatUnits(order.minPrice, 18)) : 0;
+    const maxPriceNum = order.maxPrice > 0n ? Number(formatUnits(order.maxPrice, 18)) : Infinity;
+
+    if (maxPriceNum === Infinity) {
+      return minPriceNum > 0 ? `${formatToMaxDecimals(minPriceNum.toString(), 4)} - Market` : "Market";
+    } else if (minPriceNum === 0) {
+      return `Market - ${formatToMaxDecimals(maxPriceNum.toString(), 4)}`;
+    } else {
+      return `${formatToMaxDecimals(minPriceNum.toString(), 4)} - ${formatToMaxDecimals(maxPriceNum.toString(), 4)}`;
+    }
+  };
+
+  return (
+    <div
+      style={{
+        padding: "0.5rem",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        background: "var(--bg-card)",
+      }}
+    >
+      {!isConnected ? (
+        <p style={{ fontSize: "0.875rem", padding: "1rem", color: "var(--text-muted)" }}>
+          Connect wallet to view your orders
+        </p>
+      ) : !marketId ? (
+        <p style={{ fontSize: "0.875rem", padding: "1rem" }}>Market ID not found.</p>
+      ) : isLoading && openOrdersArray.length === 0 ? (
+        <div style={{ fontSize: "0.875rem", padding: "1rem" }}>Loading orders...</div>
+      ) : error ? (
+        <div className="error-message">Error: {error}</div>
+      ) : openOrdersArray.length === 0 ? (
+        <p style={{ fontSize: "0.875rem", padding: "1rem", color: "var(--text-muted)" }}>
+          No active orders
+        </p>
       ) : (
-        <table border={1} className="order-table">
-          <thead>
-            <tr>
-              <th>Order ID</th>
-              <th>Pair</th>
-              <th>Remaining Amount</th>
-              <th>Min Price (USD)</th>
-              <th>Max Price (USD)</th>
-              <th>Action</th> {/* 10. Add Action column */}
-            </tr>
-          </thead>
-          <tbody>
+        <>
+          {/* Header */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "0.6fr 1.2fr 1fr 0.8fr",
+              padding: "0.5rem 0.5rem 0.375rem",
+              fontSize: "0.6875rem",
+              fontWeight: "600",
+              color: "var(--text-muted)",
+              borderBottom: "1px solid var(--border-color)",
+              textTransform: "uppercase",
+            }}
+          >
+            <div style={{ textAlign: "left" }}>ID</div>
+            <div style={{ textAlign: "left" }}>Price</div>
+            <div style={{ textAlign: "right" }}>Size</div>
+            <div style={{ textAlign: "right" }}>Action</div>
+          </div>
+
+          <div style={{ overflow: "auto", flex: 1 }}>
             {openOrdersArray.map((order) => {
-              const symbol0 = tokenInfoMap[order.token0]?.symbol ?? "TKN0";
-              const symbol1 = tokenInfoMap[order.token1]?.symbol ?? "TKN1";
               const decimals0 = tokenInfoMap[order.token0]?.decimals ?? 18;
+              const size = formatUnits(order.remainingAmount0, decimals0);
+              const priceDisplay = formatPriceRange(order);
               const isThisOneCancelling =
                 (isCancelling || cancelStatus === "pending") &&
                 cancellingOrderId === order.orderId;
 
               return (
-                <tr key={order.orderId.toString()}>
-                  <td>{order.orderId.toString()}</td>
-                  <td>
-                    {symbol0}/{symbol1}
-                  </td>
-                  <td>{formatUnits(order.remainingAmount0, decimals0)}</td>
-                  <td>
-                    {order.minPrice > 0n
-                      ? formatUnits(order.minPrice, 18)
-                      : "N/A"}
-                  </td>
-                  <td>
-                    {order.maxPrice > 0n
-                      ? formatUnits(order.maxPrice, 18)
-                      : "N/A"}
-                  </td>
-                  {/* 11. Add Cancel button */}
-                  <td>
+                <div
+                  key={order.orderId.toString()}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "0.6fr 1.2fr 1fr 0.8fr",
+                    padding: "0.375rem 0.5rem",
+                    fontSize: "0.75rem",
+                    color: "#ef4444",
+                    transition: "background 0.15s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "rgba(239, 68, 68, 0.1)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "transparent";
+                  }}
+                >
+                  <div style={{ textAlign: "left", fontSize: "0.7rem", color: "var(--text-muted)" }}>
+                    #{order.orderId.toString()}
+                  </div>
+                  <div style={{ textAlign: "left" }}>{priceDisplay}</div>
+                  <div style={{ textAlign: "right" }}>
+                    {formatToMaxDecimals(size, 4)}
+                  </div>
+                  <div style={{ textAlign: "right" }}>
                     <button
                       onClick={() => handleCancelOrder(order)}
                       disabled={isThisOneCancelling}
+                      style={{
+                        background: "rgba(239, 68, 68, 0.2)",
+                        border: "1px solid #ef4444",
+                        borderRadius: "0.25rem",
+                        padding: "0.25rem 0.5rem",
+                        fontSize: "0.6875rem",
+                        color: "#ef4444",
+                        cursor: isThisOneCancelling ? "not-allowed" : "pointer",
+                        transition: "all 0.15s",
+                        opacity: isThisOneCancelling ? 0.5 : 1,
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isThisOneCancelling) {
+                          e.currentTarget.style.background = "rgba(239, 68, 68, 0.3)";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "rgba(239, 68, 68, 0.2)";
+                      }}
                     >
                       {isThisOneCancelling ? "Cancelling..." : "Cancel"}
                     </button>
-                  </td>
-                </tr>
+                  </div>
+                </div>
               );
             })}
-          </tbody>
-        </table>
-      )}
-
-      <hr className="section-divider" />
-
-      <h2>My Trade History (as Taker)</h2>
-      {/* ... (rest of the component is the same) ... */}
-      {filledOrders.length === 0 ? (
-        <p>You have not filled any orders as a taker.</p>
-      ) : (
-        <table border={1} className="order-table">
-          <thead>
-            <tr>
-              <th>Order ID Filled</th>
-              <th>Pair</th>
-              <th>Amount Bought</th>
-              <th>Amount Spent</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filledOrders.map((fill) => {
-              const symbol0 = tokenInfoMap[fill.token0]?.symbol ?? "TKN0";
-              const symbol1 = tokenInfoMap[fill.token1]?.symbol ?? "TKN1";
-              const decimals0 = tokenInfoMap[fill.token0]?.decimals ?? 18;
-              const decimals1 = tokenInfoMap[fill.token1]?.decimals ?? 18;
-              return (
-                <tr key={fill.log.logIndex}>
-                  <td>{fill.orderId.toString()}</td>
-                  <td>
-                    {symbol0}/{symbol1}
-                  </td>
-                  <td>
-                    {formatUnits(fill.amount0Filled, decimals0)} {symbol0}
-                  </td>
-                  <td>
-                    {formatUnits(fill.amount1Spent, decimals1)} {symbol1}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+          </div>
+        </>
       )}
     </div>
   );
