@@ -10,7 +10,7 @@ import {
   useChainId,
 } from "wagmi";
 import { type Address, type Log, formatUnits, BaseError } from "viem";
-import { getTokenInfoMap } from "./tokenConfig";
+import { useTokenRegistryContext } from "./TokenRegistryContext";
 import { getP2PAddress, getDeploymentBlock } from "./config";
 
 // --- Config ---
@@ -106,7 +106,7 @@ type Fill = {
 export function MyOrders() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
-  const tokenInfoMap = getTokenInfoMap(chainId);
+  const { tokenInfoMap } = useTokenRegistryContext();
   const client = usePublicClient({ chainId: chainId });
 
   const [openOrders, setOpenOrders] = useState<OrderMap>(new Map());
@@ -186,10 +186,10 @@ export function MyOrders() {
 
       // --- Process Open Orders ---
       const myOpenOrders: OrderMap = new Map();
-      const myOrderIds = new Set<bigint>();
 
       for (const log of createdLogs) {
         const orderId = log.args.orderId!;
+
         myOpenOrders.set(orderId, {
           orderId: orderId,
           maker: log.args.maker!,
@@ -200,7 +200,6 @@ export function MyOrders() {
           maxPrice: log.args.maxPrice!,
           minPrice: log.args.minPrice!,
         });
-        myOrderIds.add(orderId);
       }
 
       const reducedLogs = await client.getLogs({
@@ -217,27 +216,39 @@ export function MyOrders() {
         toBlock: latestBlock,
       });
 
+      console.log(`Processing ${reducedLogs.length} reduction/cancellation logs`);
       for (const log of reducedLogs) {
         const orderId = log.args.orderId;
         if (orderId !== undefined && myOpenOrders.has(orderId)) {
           const order = myOpenOrders.get(orderId)!;
-          order.remainingAmount0 -= log.args.amount0Closed!;
+          const amountClosed = log.args.amount0Closed!;
+          console.log(`Reducing order ${orderId}: ${order.remainingAmount0} - ${amountClosed}`);
+          order.remainingAmount0 -= amountClosed;
+          console.log(`New remaining amount: ${order.remainingAmount0}`);
         }
       }
 
+      console.log(`Processing ${filledLogs.length} fill logs`);
       for (const log of filledLogs) {
         const orderId = log.args.orderId;
         if (orderId !== undefined && myOpenOrders.has(orderId)) {
           const order = myOpenOrders.get(orderId)!;
-          order.remainingAmount0 -= log.args.amount0Filled!;
+          const amountFilled = log.args.amount0Filled!;
+          console.log(`Filling order ${orderId}: ${order.remainingAmount0} - ${amountFilled}`);
+          order.remainingAmount0 -= amountFilled;
+          console.log(`New remaining amount: ${order.remainingAmount0}`);
         }
       }
 
+      console.log(`Checking for orders to delete...`);
       myOpenOrders.forEach((order) => {
         if (order.remainingAmount0 <= 0n) {
+          console.log(`Deleting order ${order.orderId} with remaining amount ${order.remainingAmount0}`);
           myOpenOrders.delete(order.orderId);
         }
       });
+
+      console.log(`Final order count: ${myOpenOrders.size}`);
 
       setOpenOrders(myOpenOrders);
     } catch (err: any) {
@@ -252,11 +263,18 @@ export function MyOrders() {
   useEffect(() => {
     if (client && address) {
       fetchMyLogs(client, address);
+
+      // Also refresh every 10 seconds to catch fills by others
+      const interval = setInterval(() => {
+        fetchMyLogs(client, address);
+      }, 10000);
+
+      return () => clearInterval(interval);
     } else {
       setOpenOrders(new Map());
       setFilledOrders([]);
     }
-  }, [client, address]);
+  }, [client, address, chainId]);
 
   // 9. Handle function for the cancel button
   const handleCancelOrder = (order: Order) => {

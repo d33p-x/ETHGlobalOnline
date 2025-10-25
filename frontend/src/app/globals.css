@@ -25,13 +25,19 @@
   --border-hover: #3b4a72;
 
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.25);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+  --shadow-md:
+    0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  --shadow-lg:
+    0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+  --shadow-xl:
+    0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
 
   background: var(--bg-primary);
   color: var(--text-primary);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", "Roboto", "Oxygen",
+    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+    sans-serif;
   font-synthesis: none;
   font-weight: 400;
   line-height: 1.6;
@@ -74,17 +80,30 @@ body {
 }
 
 /* Typography */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   color: var(--text-primary);
   font-weight: 600;
   margin-bottom: 0.75rem;
   line-height: 1.3;
 }
 
-h1 { font-size: 2.5rem; }
-h2 { font-size: 2rem; }
-h3 { font-size: 1.5rem; }
-h4 { font-size: 1.25rem; }
+h1 {
+  font-size: 2.5rem;
+}
+h2 {
+  font-size: 2rem;
+}
+h3 {
+  font-size: 1.5rem;
+}
+h4 {
+  font-size: 1.25rem;
+}
 
 p {
   color: var(--text-secondary);
@@ -170,17 +189,19 @@ p {
 .connected-account {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.375rem 0.75rem;
-  background: var(--bg-tertiary);
+  gap: 0.75rem;
+  padding: 0.625rem 1.25rem;
+  background: rgba(30, 40, 73, 0.6);
   border-radius: 0.5rem;
-  border: 1px solid var(--border-color);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  backdrop-filter: blur(10px);
 }
 
 .connected-account span {
-  font-family: 'Courier New', monospace;
-  font-size: 0.875rem;
-  color: var(--text-secondary);
+  font-family: "Courier New", monospace;
+  font-size: 0.9375rem;
+  color: #60a5fa;
+  font-weight: 600;
 }
 
 /* Main Layout */
@@ -211,74 +232,79 @@ p {
 
 /* Buttons */
 button {
-  padding: 0.5rem 1rem;
-  background: var(--accent-primary);
+  padding: 0.625rem 1.25rem;
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
   color: white;
   border: none;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  font-weight: 500;
+  border-radius: 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: var(--shadow-sm);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 button:hover:not(:disabled) {
-  background: var(--accent-secondary);
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 8px 16px rgba(59, 130, 246, 0.4);
 }
 
 button:active:not(:disabled) {
   transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 button:disabled {
-  opacity: 0.5;
+  opacity: 0.6;
   cursor: not-allowed;
   transform: none;
+  box-shadow: none;
 }
 
 /* Forms */
 form {
-  background: var(--bg-card);
-  padding: 1rem;
-  border-radius: 0.75rem;
-  border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-md);
+  background: rgba(30, 40, 73, 0.4);
+  padding: 2rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(10px);
 }
 
 form h3 {
-  margin-bottom: 0.75rem;
+  margin-bottom: 1rem;
   color: var(--text-primary);
-  font-size: 1.125rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 label {
   display: block;
   color: var(--text-secondary);
-  font-weight: 500;
-  margin-bottom: 0.25rem;
-  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  font-size: 0.9375rem;
 }
 
 input[type="text"],
 input[type="number"] {
   width: 100%;
-  padding: 0.5rem 0.75rem;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: 0.375rem;
+  padding: 0.75rem 1rem;
+  background: rgba(26, 34, 65, 0.6);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 0.5rem;
   color: var(--text-primary);
-  font-size: 0.875rem;
-  transition: all 0.3s ease;
-  margin-bottom: 0.5rem;
+  font-size: 0.9375rem;
+  transition: all 0.2s ease;
+  margin-bottom: 1rem;
 }
 
 input:focus {
   outline: none;
-  border-color: var(--accent-primary);
+  border-color: rgba(59, 130, 246, 0.5);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  background: rgba(26, 34, 65, 0.8);
 }
 
 input::placeholder {
@@ -287,22 +313,28 @@ input::placeholder {
 
 /* Instructions Box */
 .instructions-box {
-  margin-bottom: 1.5rem;
-  padding: 1rem 1.25rem;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  border-radius: 0.75rem;
+  margin-bottom: 2rem;
+  padding: 1.5rem 1.75rem;
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.15) 0%,
+    rgba(139, 92, 246, 0.15) 100%
+  );
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 1rem;
   backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
 }
 
 .instructions-text {
   color: var(--text-secondary);
-  font-size: 0.9rem;
+  font-size: 0.9375rem;
   line-height: 1.6;
 }
 
 .instructions-text strong {
-  color: var(--accent-secondary);
+  color: #60a5fa;
+  font-weight: 600;
 }
 
 /* Form Styles */
@@ -320,37 +352,38 @@ input::placeholder {
 
 /* Debug Section - Collapsible */
 .debug-section {
-  background: var(--bg-tertiary);
-  border: 1px dashed var(--border-color);
-  border-radius: 0.5rem;
-  margin: 1.5rem 0;
-  font-family: 'Courier New', monospace;
+  background: rgba(26, 34, 65, 0.4);
+  border: 1px dashed rgba(59, 130, 246, 0.3);
+  border-radius: 0.75rem;
+  margin: 2rem 0;
+  font-family: "Courier New", monospace;
   color: var(--text-muted);
   overflow: hidden;
   transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
 }
 
 .debug-section summary {
-  padding: 0.875rem 1rem;
+  padding: 1rem 1.25rem;
   cursor: pointer;
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   color: var(--text-secondary);
   user-select: none;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
   transition: all 0.2s ease;
-  background: var(--bg-tertiary);
+  background: rgba(30, 40, 73, 0.4);
 }
 
 .debug-section summary:hover {
-  background: var(--bg-hover);
-  color: var(--accent-secondary);
+  background: rgba(59, 130, 246, 0.1);
+  color: #60a5fa;
 }
 
 .debug-section summary::before {
-  content: '▶';
+  content: "▶";
   display: inline-block;
   transition: transform 0.3s ease;
   font-size: 0.75rem;
@@ -392,34 +425,37 @@ input::placeholder {
 
 /* Messages */
 .success-message {
-  padding: 0.5rem 0.75rem;
-  background: var(--success-bg);
-  border: 1px solid var(--success);
-  border-radius: 0.375rem;
-  color: var(--success);
-  margin: 0.5rem 0;
-  font-weight: 500;
-  font-size: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: 0.5rem;
+  color: #10b981;
+  margin: 1rem 0;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
 }
 
 .error-message {
-  padding: 0.5rem 0.75rem;
-  background: var(--error-bg);
-  border: 1px solid var(--error);
-  border-radius: 0.375rem;
-  color: var(--error);
-  margin: 0.5rem 0;
-  font-weight: 500;
-  font-size: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 0.5rem;
+  color: #ef4444;
+  margin: 1rem 0;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
 }
 
 .error-details {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   overflow: auto;
-  margin-top: 0.5rem;
-  padding: 0.75rem;
-  background: var(--bg-tertiary);
-  border-radius: 0.375rem;
+  margin-top: 0.75rem;
+  padding: 1rem;
+  background: rgba(26, 34, 65, 0.6);
+  border-radius: 0.5rem;
+  border: 1px solid rgba(239, 68, 68, 0.2);
   max-height: 200px;
 }
 
@@ -449,7 +485,7 @@ ul {
 }
 
 .market-item {
-  font-family: 'Courier New', monospace;
+  font-family: "Courier New", monospace;
   font-size: 0.9rem;
   padding: 1.25rem;
   background: var(--bg-card);
@@ -474,7 +510,7 @@ ul {
 }
 
 .market-details-mono {
-  font-family: 'Courier New', monospace;
+  font-family: "Courier New", monospace;
   font-size: 0.875rem;
   color: var(--text-secondary);
   background: var(--bg-tertiary);
@@ -543,7 +579,7 @@ ul {
   border: 1px solid var(--border-color);
   margin-bottom: 0.5rem;
   border-radius: 0.5rem;
-  font-family: 'Courier New', monospace;
+  font-family: "Courier New", monospace;
   font-size: 0.875rem;
   color: var(--text-secondary);
   transition: all 0.2s ease;
@@ -566,12 +602,17 @@ hr {
   margin: 2.5rem 0;
   border: none;
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--border-color), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--border-color),
+    transparent
+  );
 }
 
 /* Typography */
 .text-monospace {
-  font-family: 'Courier New', monospace;
+  font-family: "Courier New", monospace;
 }
 
 .text-small {
@@ -619,8 +660,13 @@ hr {
 
 /* Loading States */
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .loading {
@@ -687,7 +733,9 @@ hr {
 input[type="text"]:focus,
 input[type="number"]:focus {
   border-color: #00f5ff !important;
-  box-shadow: 0 0 0 3px rgba(0, 245, 255, 0.1), 0 0 15px rgba(0, 245, 255, 0.2) !important;
+  box-shadow:
+    0 0 0 3px rgba(0, 245, 255, 0.1),
+    0 0 15px rgba(0, 245, 255, 0.2) !important;
 }
 
 /* Button Hover Animations */
@@ -701,15 +749,18 @@ button:active:not(:disabled) {
 
 /* Cyberpunk Glow Effect for Active Elements */
 @keyframes neonGlow {
-  0%, 100% {
-    box-shadow: 0 0 5px rgba(0, 245, 255, 0.2),
-                0 0 10px rgba(0, 245, 255, 0.2),
-                0 0 20px rgba(0, 245, 255, 0.2);
+  0%,
+  100% {
+    box-shadow:
+      0 0 5px rgba(0, 245, 255, 0.2),
+      0 0 10px rgba(0, 245, 255, 0.2),
+      0 0 20px rgba(0, 245, 255, 0.2);
   }
   50% {
-    box-shadow: 0 0 10px rgba(0, 245, 255, 0.4),
-                0 0 20px rgba(0, 245, 255, 0.4),
-                0 0 30px rgba(0, 245, 255, 0.4);
+    box-shadow:
+      0 0 10px rgba(0, 245, 255, 0.4),
+      0 0 20px rgba(0, 245, 255, 0.4),
+      0 0 30px rgba(0, 245, 255, 0.4);
   }
 }
 
@@ -747,12 +798,15 @@ button[style*="sellButton"]:hover:not(:disabled) {
 
 /* Smooth Transitions */
 * {
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
 /* Loading Pulse Animation Enhancement */
 @keyframes cyberpunkPulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
     text-shadow: 0 0 5px rgba(0, 245, 255, 0.5);
   }
@@ -764,4 +818,37 @@ button[style*="sellButton"]:hover:not(:disabled) {
 
 .loading {
   animation: cyberpunkPulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
+}
+
+/* Hero gradient animation */
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Spinner animation */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Feature card hover effects */
+@media (hover: hover) {
+  [style*="featureCard"]:hover,
+  div[style*="rgba(30, 40, 73, 0.4)"]:hover {
+    transform: translateY(-4px);
+    border-color: rgba(59, 130, 246, 0.4) !important;
+    box-shadow: 0 12px 24px -8px rgba(59, 130, 246, 0.3);
+  }
 }

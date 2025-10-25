@@ -239,6 +239,7 @@ export function OrderList({ marketId }: { marketId: string }) {
         }
 
         // Process reductions/cancellations
+        console.log(`OrderList: Processing ${reducedLogs.length} reduction/cancellation logs for market ${marketId}`);
         for (const log of reducedLogs) {
           const orderId = log.args.orderId;
           const amountClosed = log.args.amount0Closed;
@@ -248,6 +249,7 @@ export function OrderList({ marketId }: { marketId: string }) {
             initialOrders.has(orderId)
           ) {
             const order = initialOrders.get(orderId)!;
+            console.log(`OrderList: Reducing order ${orderId}: ${order.remainingAmount0} - ${amountClosed}`);
             if (order.remainingAmount0 >= amountClosed) {
               order.remainingAmount0 -= amountClosed;
             } else {
@@ -257,7 +259,10 @@ export function OrderList({ marketId }: { marketId: string }) {
               order.remainingAmount0 = 0n; // Set to zero if discrepancy
             }
             if (order.remainingAmount0 === 0n) {
+              console.log(`OrderList: Deleting order ${orderId} (fully cancelled/reduced)`);
               initialOrders.delete(orderId);
+            } else {
+              console.log(`OrderList: Order ${orderId} now has ${order.remainingAmount0} remaining`);
             }
           }
         }
@@ -476,6 +481,11 @@ export function OrderList({ marketId }: { marketId: string }) {
 
   const orderArray = Array.from(orders.values());
 
+  // Helper function to get Basescan URL
+  const getBasescanUrl = (address: string): string => {
+    return `https://sepolia.basescan.org/address/${address}`;
+  };
+
   return (
     <div
       style={{
@@ -518,7 +528,22 @@ export function OrderList({ marketId }: { marketId: string }) {
               {orderArray.map((order) => (
                 <tr key={order.orderId.toString()}>
                   <td>{order.orderId.toString()}</td>
-                  <td>{order.maker.substring(0, 8)}...</td>
+                  <td>
+                    <a
+                      href={getBasescanUrl(order.maker)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        color: "#00f5ff",
+                        textDecoration: "none",
+                        transition: "opacity 0.2s",
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.7")}
+                      onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+                    >
+                      {order.maker.substring(0, 8)}...
+                    </a>
+                  </td>
                   <td>
                     {formatToMaxDecimals(
                       formatUnits(order.remainingAmount0, order.decimals0 ?? 18)

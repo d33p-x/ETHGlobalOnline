@@ -47,7 +47,7 @@ const NETWORK_CONFIGS: Record<number, NetworkConfig> = {
   },
   // Base Sepolia (update P2P address after deployment!)
   [baseSepolia.id]: {
-    p2pAddress: "0x2a942237037394852f34cBA4Fcec3dF00Ff0aa6A",
+    p2pAddress: "0xa32156451Eb56310845af7362239FB5e1F95cA8a",
     deploymentBlock: 32804371n, // Contract deployment block
     tokens: {
       // Real Base Sepolia tokens (DO NOT CHANGE)

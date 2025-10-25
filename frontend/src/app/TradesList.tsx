@@ -35,6 +35,7 @@ type Trade = {
   amount1Spent: bigint;
   taker: Address;
   blockNumber: bigint;
+  transactionHash: string;
   timestamp?: number; // Optional: we'll try to get this from the block
 };
 
@@ -112,7 +113,8 @@ export function TradesList({ marketId }: { marketId: string }) {
             amount0Filled !== undefined &&
             amount1Spent !== undefined &&
             taker &&
-            log.blockNumber
+            log.blockNumber &&
+            log.transactionHash
           ) {
             tradesData.push({
               orderId,
@@ -122,6 +124,7 @@ export function TradesList({ marketId }: { marketId: string }) {
               amount1Spent,
               taker,
               blockNumber: log.blockNumber,
+              transactionHash: log.transactionHash,
             });
           }
         }
@@ -176,18 +179,26 @@ export function TradesList({ marketId }: { marketId: string }) {
             amount0Filled !== undefined &&
             amount1Spent !== undefined &&
             taker &&
-            log.blockNumber
+            log.blockNumber &&
+            log.transactionHash
           ) {
-            // Add new trade at the beginning
-            newTrades.unshift({
-              orderId,
-              token0,
-              token1,
-              amount0Filled,
-              amount1Spent,
-              taker,
-              blockNumber: log.blockNumber,
-            });
+            // Check if this transaction hash already exists to prevent duplicates
+            const exists = prevTrades.some(
+              (t) => t.transactionHash === log.transactionHash
+            );
+            if (!exists) {
+              // Add new trade at the beginning
+              newTrades.unshift({
+                orderId,
+                token0,
+                token1,
+                amount0Filled,
+                amount1Spent,
+                taker,
+                blockNumber: log.blockNumber,
+                transactionHash: log.transactionHash,
+              });
+            }
           }
         }
         // Keep only the most recent 50 trades
@@ -203,6 +214,12 @@ export function TradesList({ marketId }: { marketId: string }) {
       Number(formatUnits(trade.amount1Spent, decimals1)) /
       Number(formatUnits(trade.amount0Filled, decimals0));
     return formatToMaxDecimals(price.toString());
+  };
+
+  // Helper function to get Basescan URL
+  const getBasescanUrl = (type: "tx" | "address", value: string): string => {
+    const baseUrl = "https://sepolia.basescan.org";
+    return type === "tx" ? `${baseUrl}/tx/${value}` : `${baseUrl}/address/${value}`;
   };
 
   return (
@@ -236,7 +253,7 @@ export function TradesList({ marketId }: { marketId: string }) {
           <table className="order-table">
             <thead>
               <tr>
-                <th>Order ID</th>
+                <th>Tx Hash</th>
                 <th>Price</th>
                 <th>Amount</th>
                 <th>Total</th>
@@ -245,8 +262,23 @@ export function TradesList({ marketId }: { marketId: string }) {
             </thead>
             <tbody>
               {trades.map((trade, index) => (
-                <tr key={`${trade.orderId}-${trade.blockNumber}-${index}`}>
-                  <td>{trade.orderId.toString()}</td>
+                <tr key={`${trade.transactionHash}-${index}`}>
+                  <td>
+                    <a
+                      href={getBasescanUrl("tx", trade.transactionHash)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        color: "#00f5ff",
+                        textDecoration: "none",
+                        transition: "opacity 0.2s",
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.7")}
+                      onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+                    >
+                      {trade.transactionHash.substring(0, 10)}...
+                    </a>
+                  </td>
                   <td>{getPrice(trade)}</td>
                   <td>
                     {formatToMaxDecimals(
@@ -258,7 +290,22 @@ export function TradesList({ marketId }: { marketId: string }) {
                       formatUnits(trade.amount1Spent, decimals1)
                     )}
                   </td>
-                  <td>{trade.taker.substring(0, 8)}...</td>
+                  <td>
+                    <a
+                      href={getBasescanUrl("address", trade.taker)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        color: "#00f5ff",
+                        textDecoration: "none",
+                        transition: "opacity 0.2s",
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.7")}
+                      onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+                    >
+                      {trade.taker.substring(0, 8)}...
+                    </a>
+                  </td>
                 </tr>
               ))}
             </tbody>

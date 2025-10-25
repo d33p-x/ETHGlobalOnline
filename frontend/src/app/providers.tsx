@@ -5,6 +5,7 @@ import { type ReactNode, useState } from 'react'
 import { type State, WagmiProvider } from 'wagmi'
 
 import { getConfig } from '@/wagmi'
+import { TokenRegistryProvider } from './TokenRegistryContext'
 
 export function Providers(props: {
   children: ReactNode
@@ -16,7 +17,7 @@ export function Providers(props: {
   return (
     <WagmiProvider config={config} initialState={props.initialState}>
       <QueryClientProvider client={queryClient}>
-        {props.children}
+        <TokenRegistryProvider>{props.children}</TokenRegistryProvider>
       </QueryClientProvider>
     </WagmiProvider>
   )

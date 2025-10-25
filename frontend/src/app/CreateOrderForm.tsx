@@ -17,8 +17,9 @@ import {
   maxUint256,
 } from "viem";
 import { erc20Abi } from "viem";
-import { getTokenInfoMap } from "@/app/tokenConfig";
+import { useTokenRegistryContext } from "@/app/TokenRegistryContext";
 import { getP2PAddress } from "./config";
+import { WrapUnwrapButton } from "./WrapUnwrap";
 
 const p2pAbi = [
   {
@@ -46,7 +47,7 @@ export function CreateOrderForm({
   const { address: userAddress, isConnected, chain } = useAccount();
   const chainId = useChainId();
   const p2pAddress = getP2PAddress(chainId);
-  const tokenInfoMap = getTokenInfoMap(chainId);
+  const { tokenInfoMap } = useTokenRegistryContext();
 
   const [amount0, setAmount0] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
@@ -55,8 +56,11 @@ export function CreateOrderForm({
 
   const token0 = defaultToken0;
   const token1 = defaultToken1;
-  const token0Symbol = tokenInfoMap[token0]?.symbol ?? "Token";
-  const token0Decimals = tokenInfoMap[token0]?.decimals ?? 18;
+  const tokenInfo0 = tokenInfoMap[token0];
+  const token0Symbol = tokenInfo0?.symbol ?? "Token";
+  const token0Decimals = tokenInfo0?.decimals ?? 18;
+
+  const isWethMarket = tokenInfo0?.symbol === "WETH";
 
   const {
     data: balanceData,
@@ -79,10 +83,7 @@ export function CreateOrderForm({
     address: token0,
     abi: erc20Abi,
     functionName: "allowance",
-    args:
-      userAddress && p2pAddress
-        ? [userAddress, p2pAddress]
-        : undefined,
+    args: userAddress && p2pAddress ? [userAddress, p2pAddress] : undefined,
     chainId: chainId,
     query: {
       enabled:
@@ -203,7 +204,8 @@ export function CreateOrderForm({
             <span style={{ color: "var(--error)" }}>Error</span>
           ) : (
             <>
-              {balance} <span style={styles.tokenSymbol}>{token0Symbol}</span>
+              {parseFloat(balance).toFixed(5)}{" "}
+              <span style={styles.tokenSymbol}>{token0Symbol}</span>
             </>
           )}
         </div>
@@ -213,7 +215,10 @@ export function CreateOrderForm({
       <div style={styles.inputGroup}>
         <label style={styles.label}>
           Amount to Sell
-          <span style={styles.tooltip} title="Amount of tokens you want to sell">
+          <span
+            style={styles.tooltip}
+            title="Amount of tokens you want to sell"
+          >
             ⓘ
           </span>
         </label>
@@ -250,16 +255,12 @@ export function CreateOrderForm({
       </div>
 
       {/* Price Range */}
+
       <div style={styles.priceRange}>
-        <div style={styles.priceLabel}>
-          Price Range (Optional)
-          <span style={styles.tooltip} title="Set min/max prices for your order to execute">
-            ⓘ
-          </span>
-        </div>
         <div style={styles.priceInputs}>
           <div style={styles.priceInputGroup}>
-            <label style={styles.smallLabel}>Min Price</label>
+            <label style={styles.smallLabel}>Min Price (Optional)</label>
+
             <input
               type="text"
               value={minPrice}
@@ -268,9 +269,12 @@ export function CreateOrderForm({
               style={styles.smallInput}
             />
           </div>
+
           <div style={styles.priceSeparator}>→</div>
+
           <div style={styles.priceInputGroup}>
-            <label style={styles.smallLabel}>Max Price</label>
+            <label style={styles.smallLabel}>Max Price (Optional)</label>
+
             <input
               type="text"
               value={maxPrice}
@@ -299,7 +303,7 @@ export function CreateOrderForm({
         ) : isConfirming ? (
           <span>⏳ Creating Order...</span>
         ) : (
-          <span>📉 Create Sell Order</span>
+          <span>Create Sell Order</span>
         )}
       </button>
 
@@ -352,7 +356,7 @@ const styles = {
   container: {
     display: "flex",
     flexDirection: "column" as const,
-    gap: "1.25rem",
+    gap: "1rem",
   },
 
   balanceSection: {
@@ -385,7 +389,7 @@ const styles = {
   inputGroup: {
     display: "flex",
     flexDirection: "column" as const,
-    gap: "0.5rem",
+    gap: "0.25rem",
   },
 
   label: {
@@ -457,7 +461,7 @@ const styles = {
   priceRange: {
     display: "flex",
     flexDirection: "column" as const,
-    gap: "0.75rem",
+    gap: "0.5rem",
   },
 
   priceLabel: {
@@ -514,7 +518,7 @@ const styles = {
     borderRadius: "0.5rem",
     cursor: "pointer",
     transition: "all 0.3s ease",
-    marginTop: "0.5rem",
+    marginTop: "0.25rem",
   },
 
   approveButton: {

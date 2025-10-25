@@ -18,8 +18,12 @@ import {
   maxUint256,
 } from "viem";
 import { erc20Abi } from "viem";
-import { getTokenInfoMap } from "@/app/tokenConfig";
+import { useTokenRegistryContext } from "@/app/TokenRegistryContext";
 import { getP2PAddress, getDeploymentBlock } from "./config";
+import { WrapUnwrapButton } from "./WrapUnwrap";
+
+import { useConfig } from "wagmi";
+import { readContract } from "wagmi/actions";
 
 const p2pAbi = [
   {
@@ -32,7 +36,24 @@ const p2pAbi = [
       { name: "_amount1", type: "uint256" },
     ],
     outputs: [],
-    stateMutability: "nonpayable",
+    stateMutability: "payable",
+  },
+  {
+    type: "function",
+    name: "pyth",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+    stateMutability: "view",
+  },
+] as const;
+
+const pythAbi = [
+  {
+    type: "function",
+    name: "getUpdateFee",
+    inputs: [{ name: "updateData", type: "bytes[]" }],
+    outputs: [{ name: "feeAmount", type: "uint256" }],
+    stateMutability: "view",
   },
 ] as const;
 
@@ -91,21 +112,33 @@ export function FillOrderForm({
   defaultToken1: Address;
   marketId: string;
 }) {
+  const config = useConfig();
   const { address: userAddress, isConnected, chain } = useAccount();
   const chainId = useChainId();
   const p2pAddress = getP2PAddress(chainId);
-  const tokenInfoMap = getTokenInfoMap(chainId);
+  const { tokenInfoMap } = useTokenRegistryContext();
 
   const [amount1, setAmount1] = useState("");
   const [needsApproval, setNeedsApproval] = useState(false);
   const [hasLiquidity, setHasLiquidity] = useState(true);
   const [isCheckingLiquidity, setIsCheckingLiquidity] = useState(true);
+  const [pythUpdateData, setPythUpdateData] = useState<{
+    priceUpdateArray: `0x${string}`[];
+    fee: bigint;
+  } | null>(null);
+  const [isPythLoading, setIsPythLoading] = useState(false);
+  const [pythError, setPythError] = useState<string | null>(null);
+  const [pythContractAddress, setPythContractAddress] = useState<Address | null>(null);
 
   const token0 = defaultToken0;
   const token1 = defaultToken1;
-  const token0Symbol = tokenInfoMap[token0]?.symbol ?? "Token";
-  const token1Symbol = tokenInfoMap[token1]?.symbol ?? "Token";
-  const token1Decimals = tokenInfoMap[token1]?.decimals ?? 18;
+  const tokenInfo0 = tokenInfoMap[token0];
+  const tokenInfo1 = tokenInfoMap[token1];
+  const token0Symbol = tokenInfo0?.symbol ?? "Token";
+  const token1Symbol = tokenInfo1?.symbol ?? "Token";
+  const token1Decimals = tokenInfo1?.decimals ?? 18;
+
+  const isWethMarket = tokenInfo1?.symbol === "WETH";
 
   const client = usePublicClient({ chainId: chainId });
 
@@ -160,8 +193,16 @@ export function FillOrderForm({
 
   const { isLoading: isApproving, isSuccess: isApproved } =
     useWaitForTransactionReceipt({ hash: approveHash });
-  const { isLoading: isConfirming, isSuccess: isConfirmed } =
-    useWaitForTransactionReceipt({ hash: fillOrderHash });
+  const {
+    isLoading: isConfirming,
+    isSuccess: isConfirmed,
+  } = useWaitForTransactionReceipt({
+    hash: fillOrderHash,
+    query: {
+      // Increase retry attempts and add more time
+      retry: 10,
+    }
+  });
 
   // Check for available liquidity
   useEffect(() => {
@@ -254,7 +295,7 @@ export function FillOrderForm({
     };
 
     checkLiquidity();
-  }, [client, marketId]);
+  }, [client, marketId, p2pAddress, chainId]);
 
   useEffect(() => {
     if (allowance === undefined || !amount1 || !token1Decimals) {
@@ -283,6 +324,88 @@ export function FillOrderForm({
     }
   }, [isApproved, refetchAllowance]);
 
+  // Fetch Pyth contract address once
+  useEffect(() => {
+    if (!p2pAddress || pythContractAddress) return;
+
+    const fetchPythContractAddress = async () => {
+      try {
+        const address = await readContract(config, {
+          address: p2pAddress,
+          abi: p2pAbi,
+          functionName: "pyth",
+          chainId,
+        });
+        setPythContractAddress(address);
+      } catch (error) {
+        console.error("Error fetching Pyth contract address:", error);
+      }
+    };
+
+    fetchPythContractAddress();
+  }, [p2pAddress, config, chainId, pythContractAddress]);
+
+  // Fetch Pyth price data every 5 seconds
+  useEffect(() => {
+    if (!tokenInfo0?.priceFeedId || !tokenInfo1?.priceFeedId || !pythContractAddress) {
+      return;
+    }
+
+    const fetchPythData = async () => {
+      // Only show loading on initial fetch
+      if (!pythUpdateData) {
+        setIsPythLoading(true);
+      }
+      setPythError(null);
+
+      try {
+        // Fetch only the prices for token0 and token1 in parallel with fee calculation
+        const priceFeedsUrl = `https://hermes.pyth.network/api/latest_vaas?ids[]=${tokenInfo0.priceFeedId}&ids[]=${tokenInfo1.priceFeedId}`;
+
+        const [response] = await Promise.all([
+          fetch(priceFeedsUrl)
+        ]);
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch Pyth data: ${response.statusText}`);
+        }
+
+        const pythData = await response.json();
+
+        const priceUpdateArray = pythData.map(
+          (vaa: string) => ("0x" + Buffer.from(vaa, "base64").toString("hex")) as `0x${string}`
+        );
+
+        // Get update fee (using cached contract address)
+        const fee = await readContract(config, {
+          address: pythContractAddress,
+          abi: pythAbi,
+          functionName: "getUpdateFee",
+          args: [priceUpdateArray],
+          chainId,
+        });
+
+        setPythUpdateData({
+          priceUpdateArray,
+          fee,
+        });
+        setIsPythLoading(false);
+      } catch (error) {
+        console.error("Error fetching Pyth data:", error);
+        setPythError(error instanceof Error ? error.message : "Failed to fetch price data");
+        setIsPythLoading(false);
+      }
+    };
+
+    // Fetch immediately
+    fetchPythData();
+
+    // Then fetch every 5 seconds
+    const interval = setInterval(fetchPythData, 5000);
+
+    return () => clearInterval(interval);
+  }, [tokenInfo0?.priceFeedId, tokenInfo1?.priceFeedId, pythContractAddress, config, chainId, pythUpdateData]);
+
   const handleApprove = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token1 || !amount1) return;
@@ -297,20 +420,46 @@ export function FillOrderForm({
 
   const handleFillOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (needsApproval || !token0 || !token1 || !amount1) return;
+
+    if (needsApproval || !token0 || !token1 || !amount1 || !tokenInfo0?.priceFeedId || !tokenInfo1?.priceFeedId || !pythContractAddress) {
+      console.log("Cannot fill order: missing requirements");
+      return;
+    }
 
     try {
+      // Fetch fresh Pyth data right before submitting transaction
+      const priceFeedsUrl = `https://hermes.pyth.network/api/latest_vaas?ids[]=${tokenInfo0.priceFeedId}&ids[]=${tokenInfo1.priceFeedId}`;
+
+      const response = await fetch(priceFeedsUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch fresh Pyth data: ${response.statusText}`);
+      }
+
+      const pythData = await response.json();
+      const freshPriceUpdateArray = pythData.map(
+        (vaa: string) => ("0x" + Buffer.from(vaa, "base64").toString("hex")) as `0x${string}`
+      );
+
+      // Get fresh update fee
+      const freshFee = await readContract(config, {
+        address: pythContractAddress,
+        abi: pythAbi,
+        functionName: "getUpdateFee",
+        args: [freshPriceUpdateArray],
+        chainId,
+      });
+
       const formattedAmount1 = parseUnits(amount1, token1Decimals);
-      const priceUpdateArray: `0x${string}`[] = [];
 
       fillOrderWriteContract({
         address: p2pAddress,
         abi: p2pAbi,
         functionName: "fillOrderExactAmountIn",
-        args: [priceUpdateArray, token0, token1, formattedAmount1],
+        args: [freshPriceUpdateArray, token0, token1, formattedAmount1],
+        value: freshFee,
       });
     } catch (err) {
-      console.error("Formatting/submission error:", err);
+      console.error("An error occurred in handleFillOrder:", err);
     }
   };
 
@@ -337,7 +486,8 @@ export function FillOrderForm({
             <span style={{ color: "var(--error)" }}>Error</span>
           ) : (
             <>
-              {balance} <span style={styles.tokenSymbol}>{token1Symbol}</span>
+              {parseFloat(balance).toFixed(5)}{" "}
+              <span style={styles.tokenSymbol}>{token1Symbol}</span>
             </>
           )}
         </div>
@@ -404,7 +554,9 @@ export function FillOrderForm({
           !isConnected ||
           !amount1 ||
           !hasLiquidity ||
-          isCheckingLiquidity
+          isCheckingLiquidity ||
+          isPythLoading ||
+          !pythUpdateData
         }
         style={{
           ...styles.submitButton,
@@ -415,6 +567,8 @@ export function FillOrderForm({
           <span>⏳ Checking liquidity...</span>
         ) : !hasLiquidity ? (
           <span>🚫 No Liquidity Available</span>
+        ) : isPythLoading && !pythUpdateData ? (
+          <span>⏳ Loading price data...</span>
         ) : isApproving ? (
           <span>⏳ Approving...</span>
         ) : needsApproval ? (
@@ -422,7 +576,7 @@ export function FillOrderForm({
         ) : isConfirming ? (
           <span>⏳ Filling Order...</span>
         ) : (
-          <span>📈 Buy {token0Symbol}</span>
+          <span>Buy {token0Symbol}</span>
         )}
       </button>
 
@@ -449,12 +603,25 @@ export function FillOrderForm({
           <span>💡</span> Check your wallet to confirm the transaction
         </div>
       )}
+      {fillOrderHash && !isConfirmed && !isConfirming && (
+        <div style={styles.infoMessage}>
+          <span>⏳</span> Transaction submitted! Waiting for confirmation...
+          <a
+            href={`https://sepolia.basescan.org/tx/${fillOrderHash}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: "#00f5ff", marginLeft: "0.5rem" }}
+          >
+            View on Basescan
+          </a>
+        </div>
+      )}
       {isConfirmed && (
         <div style={styles.successMessage}>
           <span>✓</span> Order filled! Check your balance.
         </div>
       )}
-      {fillOrderStatus === "error" && (
+      {fillOrderStatus === "error" && !fillOrderHash && (
         <div style={styles.errorMessage}>
           <span>⚠</span>{" "}
           {(fillOrderError as BaseError)?.shortMessage ||
@@ -472,6 +639,12 @@ export function FillOrderForm({
         <div style={styles.warningMessage}>
           <span>💧</span> No sell orders available. Be the first to create a
           sell order!
+        </div>
+      )}
+
+      {pythError && (
+        <div style={styles.errorMessage}>
+          <span>⚠</span> Price data error: {pythError}
         </div>
       )}
     </div>
@@ -592,10 +765,6 @@ const styles = {
     background: "rgba(0, 245, 255, 0.05)",
     border: "1px solid rgba(0, 245, 255, 0.2)",
     borderRadius: "0.5rem",
-  },
-
-  infoIcon: {
-    fontSize: "1.25rem",
   },
 
   infoText: {

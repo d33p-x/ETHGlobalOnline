@@ -28,13 +28,13 @@ contract DeploySepolia is Script {
         address LINK = 0xE4aB69C077896252FAFBD49EFD26B5D171A32410;
 
         // Mock tokens (UPDATE THESE after running deploy-tokens.sh)
-        address USDT = 0x5Fe161a97511aa3C185cBfFDCf281Fd510411343; // TODO: Update from deploy-tokens.sh output
-        address cbDOGE = 0x58c445B391c553A216DEfEd1631997eddF604B49; // TODO: Update from deploy-tokens.sh output
-        address cbBTC = 0xA4d20763EB35092bdd5B2545079AACF048fA96B7; // TODO: Update from deploy-tokens.sh output
-        address SHIB = 0x7f24751c3aECdCC72981CBF9bbdefAD11094AB2D; // TODO: Update from deploy-tokens.sh output
-        address AERO = 0x67Abb24DAC2b03550F6594909917a5BBDFDbEDb2; // TODO: Update from deploy-tokens.sh output
-        address cbXRP = 0xbB792AfFD9152d17E0772e2B7CcE48A17103E59d; // TODO: Update from deploy-tokens.sh output
-        address PEPE = 0x69F2ecec8707359204dea8249b64a5a3d3e1aE05; // TODO: Update from deploy-tokens.sh output
+        address USDT = 0x5Fe161a97511aa3C185cBfFDCf281Fd510411343; //
+        address cbDOGE = 0x58c445B391c553A216DEfEd1631997eddF604B49; //
+        address cbBTC = 0xA4d20763EB35092bdd5B2545079AACF048fA96B7; //
+        address SHIB = 0x7f24751c3aECdCC72981CBF9bbdefAD11094AB2D; //
+        address AERO = 0x67Abb24DAC2b03550F6594909917a5BBDFDbEDb2; //
+        address cbXRP = 0xbB792AfFD9152d17E0772e2B7CcE48A17103E59d; //
+        address PEPE = 0x69F2ecec8707359204dea8249b64a5a3d3e1aE05; //
 
         vm.startBroadcast(deployerPrivateKey);
 

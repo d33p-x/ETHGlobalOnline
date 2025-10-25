@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useWriteContract, useWaitForTransactionReceipt, useChainId } from "wagmi";
 import { type Address, BaseError } from "viem";
 import { getP2PAddress, getTokenAddresses } from "./config";
@@ -37,6 +37,14 @@ export function CreateMarketModal({ isOpen, onClose, existingMarkets }: CreateMa
   const { writeContract, data: hash, status, error, reset } = useWriteContract();
   const { isLoading: isConfirming, isSuccess: isConfirmed } =
     useWaitForTransactionReceipt({ hash });
+
+  // Reset form when transaction is confirmed to prevent "already exists" warning
+  useEffect(() => {
+    if (isConfirmed) {
+      setToken0("" as Address);
+      setToken1("" as Address);
+    }
+  }, [isConfirmed]);
 
   // Get list of deployed tokens (non-zero addresses)
   const availableTokens = Object.entries(tokenAddresses)
@@ -130,7 +138,7 @@ export function CreateMarketModal({ isOpen, onClose, existingMarkets }: CreateMa
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: "1.5rem" }}>
               <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>
-                Token 0 (Base Asset)
+                Base Asset
               </label>
               <select
                 value={token0}
@@ -148,7 +156,7 @@ export function CreateMarketModal({ isOpen, onClose, existingMarkets }: CreateMa
                 <option value="">Select token...</option>
                 {availableTokens.map((token) => (
                   <option key={token.address} value={token.address}>
-                    {token.symbol} ({token.decimals} decimals)
+                    {token.symbol}
                   </option>
                 ))}
               </select>
@@ -156,7 +164,7 @@ export function CreateMarketModal({ isOpen, onClose, existingMarkets }: CreateMa
 
             <div style={{ marginBottom: "1.5rem" }}>
               <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500" }}>
-                Token 1 (Quote Asset)
+                Quote Asset
               </label>
               <select
                 value={token1}
@@ -174,7 +182,7 @@ export function CreateMarketModal({ isOpen, onClose, existingMarkets }: CreateMa
                 <option value="">Select token...</option>
                 {availableTokens.map((token) => (
                   <option key={token.address} value={token.address}>
-                    {token.symbol} ({token.decimals} decimals)
+                    {token.symbol}
                   </option>
                 ))}
               </select>

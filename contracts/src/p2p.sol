@@ -5,7 +5,6 @@ import "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
 import "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {console} from "forge-std/console.sol";
 
 contract P2P is ReentrancyGuard {
     event MarketCreated(bytes32 marketId, address token0, address token1);
@@ -66,7 +65,6 @@ contract P2P is ReentrancyGuard {
         uint256 headId; // first order
         uint256 tailId; // last order
         uint256 totalLiquidity;
-        uint256 nextOrderId;
     }
 
     mapping(bytes32 => Market) public markets; //mapping markets (keccak of token0 & token1)
@@ -74,6 +72,7 @@ contract P2P is ReentrancyGuard {
 
     IPyth public pyth;
     address public owner;
+    uint256 public globalNextOrderId = 1; // Global order ID counter
 
     constructor(address _pythAddress) {
         pyth = IPyth(_pythAddress);
@@ -98,7 +97,6 @@ contract P2P is ReentrancyGuard {
         newMarket.token1 = _token1;
         newMarket.decimals0 = IERC20Metadata(_token0).decimals();
         newMarket.decimals1 = IERC20Metadata(_token1).decimals();
-        newMarket.nextOrderId = 1;
         emit MarketCreated(marketId, _token0, _token1);
     }
 
@@ -114,8 +112,9 @@ contract P2P is ReentrancyGuard {
         // get market pointer
         Market storage market = markets[marketId];
 
-        // get orderid
-        uint256 orderId = market.nextOrderId;
+        // get global unique orderid
+        uint256 orderId = globalNextOrderId;
+        globalNextOrderId++;
 
         // create new order in mapping
         Order memory order = Order(
@@ -144,7 +143,6 @@ contract P2P is ReentrancyGuard {
 
         market.tailId = orderId;
         market.totalLiquidity += _amount0;
-        market.nextOrderId++;
         IERC20Metadata(market.token0).transferFrom(
             msg.sender,
             address(this),
@@ -223,20 +221,18 @@ contract P2P is ReentrancyGuard {
     ) public payable marketExists(_token0, _token1) nonReentrant {
         bytes32 marketId = keccak256(abi.encodePacked(_token0, _token1));
         uint fee = pyth.getUpdateFee(priceUpdate);
-        console.log("1");
         pyth.updatePriceFeeds{value: fee}(priceUpdate);
         bytes32 priceFeed0 = priceFeeds[_token0];
         bytes32 priceFeed1 = priceFeeds[_token1];
-        // Use 365 days (31536000 seconds) for local testing to avoid StalePrice errors
+        // 15 second staleness tolerance - safe given 0.15% fee spread protects against arbitrage
         PythStructs.Price memory priceObject0 = pyth.getPriceNoOlderThan(
             priceFeed0,
-            31536000
+            15
         );
         PythStructs.Price memory priceObject1 = pyth.getPriceNoOlderThan(
             priceFeed1,
-            31536000
+            15
         );
-        console.log("2");
 
         // convert int64 to uint256 (think about changing this later)
         require(priceObject0.price >= 0);
@@ -244,20 +240,17 @@ contract P2P is ReentrancyGuard {
         //  absolute exponents for uint256
         uint256 absExpo0 = uint256(uint32(-priceObject0.expo));
         uint256 absExpo1 = uint256(uint32(-priceObject1.expo));
-        console.log("3");
 
         // normalize price because of possible different exponents
         uint256 price0 = (uint256(uint64(priceObject0.price)) * 1e18) /
             (10 ** absExpo0);
         uint256 price1 = (uint256(uint64(priceObject1.price)) * 1e18) /
             (10 ** absExpo1);
-        console.log("4");
 
         uint256 price0Buyer = (price0 * 100100) / 100000; //buyer pays 0.1% fee
         uint256 price0Seller = (price0 * 100050) / 100000; //seller receives 0.05% bonus
 
         Market storage market = markets[marketId];
-        console.log("5");
 
         uint256 dec0Factor = 10 ** market.decimals0;
         uint256 dec1Factor = 10 ** market.decimals1;

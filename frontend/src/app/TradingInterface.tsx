@@ -29,7 +29,6 @@ export function TradingInterface({
           }}
           onClick={() => setActiveTab("buy")}
         >
-          <span style={styles.tabIcon}>📈</span>
           Buy
         </button>
         <button
@@ -39,7 +38,6 @@ export function TradingInterface({
           }}
           onClick={() => setActiveTab("sell")}
         >
-          <span style={styles.tabIcon}>📉</span>
           Sell
         </button>
       </div>
@@ -82,7 +80,10 @@ const styles = {
   tab: {
     padding: "1rem",
     background: "transparent",
-    border: "none",
+    borderTop: "none",
+    borderLeft: "none",
+    borderRight: "none",
+    borderBottom: "2px solid transparent",
     color: "var(--text-muted)",
     fontSize: "0.875rem",
     fontWeight: "600",
@@ -100,10 +101,6 @@ const styles = {
     background: "var(--bg-card)",
     borderBottom: "2px solid #00f5ff",
     boxShadow: "0 0 20px rgba(0, 245, 255, 0.3)",
-  } as React.CSSProperties,
-
-  tabIcon: {
-    fontSize: "1.125rem",
   } as React.CSSProperties,
 
   tabContent: {
