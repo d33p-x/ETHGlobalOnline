@@ -1,7 +1,7 @@
 "use client";
 
 import { useAccount, useSwitchChain, useChainId } from "wagmi";
-import { foundry, baseSepolia } from "wagmi/chains";
+import { baseSepolia } from "wagmi/chains";
 
 export function NetworkSelector() {
   const { isConnected } = useAccount();
@@ -13,7 +13,6 @@ export function NetworkSelector() {
   }
 
   const networks = [
-    { id: foundry.id, name: "Local Anvil", emoji: "🏠" },
     { id: baseSepolia.id, name: "Base Sepolia", emoji: "🌐" },
   ];
 

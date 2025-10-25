@@ -1,10 +1,10 @@
 import { cookieStorage, createConfig, createStorage, http, fallback } from "wagmi";
-import { foundry, baseSepolia } from "wagmi/chains";
+import { baseSepolia } from "wagmi/chains";
 import { injected } from "wagmi/connectors";
 
 export function getConfig() {
   return createConfig({
-    chains: [foundry, baseSepolia],
+    chains: [baseSepolia],
     connectors: [
       injected(),
       // baseAccount(),
@@ -15,7 +15,6 @@ export function getConfig() {
     }),
     ssr: true,
     transports: {
-      [foundry.id]: http("http://127.0.0.1:8545"),
       [baseSepolia.id]: fallback([
         http(process.env.NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL, {
           timeout: 10_000,

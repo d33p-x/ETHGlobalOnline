@@ -540,7 +540,7 @@ export function FillOrderForm({
       <div style={styles.infoBox}>
         <span style={styles.infoIcon}>ℹ️</span>
         <div style={styles.infoText}>
-          You'll buy {token0Symbol} at the exact oracle price (zero slippage)
+          You'll buy {token0Symbol} at the exact oracle price (zero slippage). Partial fills are supported - you'll only pay for what's actually filled.
         </div>
       </div>
 

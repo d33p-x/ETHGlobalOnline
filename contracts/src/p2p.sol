@@ -6,6 +6,8 @@ import "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+error OrderValueTooLow(uint256 orderValueUSD, uint256 minimumValueUSD);
+
 contract P2P is ReentrancyGuard {
     event MarketCreated(bytes32 marketId, address token0, address token1);
     event OrderCreated(
@@ -105,18 +107,32 @@ contract P2P is ReentrancyGuard {
         address _token1,
         uint256 _amount0,
         uint256 _maxPrice,
-        uint256 _minPrice
-    ) public marketExists(_token0, _token1) {
+        uint256 _minPrice,
+        bytes[] calldata priceUpdate
+    ) public payable marketExists(_token0, _token1) {
         bytes32 marketId = keccak256(abi.encodePacked(_token0, _token1));
 
-        // get market pointer
+        uint fee = pyth.getUpdateFee(priceUpdate);
+        pyth.updatePriceFeeds{value: fee}(priceUpdate);
+
         Market storage market = markets[marketId];
 
-        // get global unique orderid
+        bytes32 priceFeed0 = priceFeeds[_token0];
+        PythStructs.Price memory priceObject0 = pyth.getPriceNoOlderThan(
+            priceFeed0,
+            60
+        );
+        require(priceObject0.price >= 0);
+
+        uint256 absExpo = uint256(uint32(-priceObject0.expo));
+        uint256 minValue = 10 * (10 ** market.decimals0) * (10 ** absExpo);
+        uint256 orderValue = _amount0 * uint256(uint64(priceObject0.price));
+        if (orderValue < minValue) {
+            revert OrderValueTooLow(orderValue / (10 ** absExpo), 10);
+        }
+
         uint256 orderId = globalNextOrderId;
         globalNextOrderId++;
-
-        // create new order in mapping
         Order memory order = Order(
             address(msg.sender),
             _amount0,
@@ -124,7 +140,6 @@ contract P2P is ReentrancyGuard {
             _minPrice
         );
         market.orders[orderId] = order;
-        // @todo max price and min price should be in token1 not USD
         // create new node in mapping
         QueueNode memory queueNode = QueueNode({
             nextId: 0, //0 because its the last order
@@ -212,7 +227,7 @@ contract P2P is ReentrancyGuard {
             _amount0Close
         );
     }
-    // @todo create fillOrderExactAmountOut
+
     function fillOrderExactAmountIn(
         bytes[] calldata priceUpdate,
         address _token0,
@@ -224,7 +239,7 @@ contract P2P is ReentrancyGuard {
         pyth.updatePriceFeeds{value: fee}(priceUpdate);
         bytes32 priceFeed0 = priceFeeds[_token0];
         bytes32 priceFeed1 = priceFeeds[_token1];
-        // 15 second staleness tolerance - safe given 0.15% fee spread protects against arbitrage
+
         PythStructs.Price memory priceObject0 = pyth.getPriceNoOlderThan(
             priceFeed0,
             15
@@ -247,8 +262,8 @@ contract P2P is ReentrancyGuard {
         uint256 price1 = (uint256(uint64(priceObject1.price)) * 1e18) /
             (10 ** absExpo1);
 
-        uint256 price0Buyer = (price0 * 100100) / 100000; //buyer pays 0.1% fee
-        uint256 price0Seller = (price0 * 100050) / 100000; //seller receives 0.05% bonus
+        uint256 price0Buyer = (price0 * 100100) / 100000; // buyer pays 0.1% more
+        uint256 price0Seller = (price0 * 100050) / 100000; // seller gets 0.05% more
 
         Market storage market = markets[marketId];
 
@@ -256,11 +271,9 @@ contract P2P is ReentrancyGuard {
         uint256 dec1Factor = 10 ** market.decimals1;
 
         uint256 amount0Target = (_amount1 * price1 * dec0Factor) /
-            (price0Buyer * dec1Factor); //give buyer less because of fee
+            (price0Buyer * dec1Factor);
 
-        require(amount0Target > 0);
-        // @todo this doesnt consider custom price orders
-        require(amount0Target <= market.totalLiquidity);
+        require(amount0Target > 0, "Amount too small");
 
         uint256 amount0FilledTotal = 0;
         uint256 amount1SpentOnSellers = 0;
@@ -274,12 +287,17 @@ contract P2P is ReentrancyGuard {
             QueueNode storage queueNode = market.queue[currentOrderId];
             uint256 nextOrderId = queueNode.nextId;
 
-            if (
-                (order.maxPrice != 0 && price0 > order.maxPrice) ||
-                (order.minPrice != 0 && price0 < order.minPrice)
-            ) {
-                currentOrderId = nextOrderId;
-                continue;
+            if (order.maxPrice != 0 || order.minPrice != 0) {
+                uint256 currentExchangeRate = (price0 * 1e18) / price1;
+                if (
+                    (order.maxPrice != 0 &&
+                        currentExchangeRate > order.maxPrice) ||
+                    (order.minPrice != 0 &&
+                        currentExchangeRate < order.minPrice)
+                ) {
+                    currentOrderId = nextOrderId;
+                    continue;
+                }
             }
 
             uint256 amount0RemainingToFill = amount0Target - amount0FilledTotal;
@@ -290,7 +308,8 @@ contract P2P is ReentrancyGuard {
             } else {
                 amount0ToFillLoop = order.amount0;
             }
-            // seller gets 0.05% more
+            // Calculate how much token1 seller receives (with 0.05% bonus)
+            // amount1 = (amount0 * price0Seller) / price1 (adjusted for decimals)
             uint256 amount1CostLoop = (amount0ToFillLoop *
                 price0Seller *
                 dec1Factor) / (price1 * dec0Factor);
@@ -343,8 +362,18 @@ contract P2P is ReentrancyGuard {
         }
         market.totalLiquidity -= amount0FilledTotal;
 
+        // Transfer filled token0 to buyer
         IERC20Metadata(_token0).transfer(msg.sender, amount0FilledTotal);
-        uint256 protocolFee = _amount1 - amount1SpentOnSellers;
+
+        // Calculate actual protocol fee based on what was filled
+        // Protocol fee = difference between what buyer pays and what sellers receive
+        // amount1Buyer = (amount0 * price0Buyer) / price1
+        uint256 amount1ActuallyNeeded = (amount0FilledTotal *
+            price0Buyer *
+            dec1Factor) / (price1 * dec0Factor);
+        uint256 protocolFee = amount1ActuallyNeeded - amount1SpentOnSellers;
+
+        // Transfer protocol fee from buyer to owner
         if (protocolFee > 0) {
             IERC20Metadata(_token1).transferFrom(
                 msg.sender,

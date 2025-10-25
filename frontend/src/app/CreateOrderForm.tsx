@@ -8,7 +8,9 @@ import {
   useReadContract,
   useBalance,
   useChainId,
+  useConfig,
 } from "wagmi";
+import { readContract } from "wagmi/actions";
 import {
   type Address,
   BaseError,
@@ -31,9 +33,27 @@ const p2pAbi = [
       { name: "_amount0", type: "uint256" },
       { name: "_maxPrice", type: "uint256" },
       { name: "_minPrice", type: "uint256" },
+      { name: "priceUpdate", type: "bytes[]" },
     ],
     outputs: [],
-    stateMutability: "nonpayable",
+    stateMutability: "payable",
+  },
+  {
+    type: "function",
+    name: "pyth",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+    stateMutability: "view",
+  },
+] as const;
+
+const pythAbi = [
+  {
+    type: "function",
+    name: "getUpdateFee",
+    inputs: [{ name: "updateData", type: "bytes[]" }],
+    outputs: [{ name: "feeAmount", type: "uint256" }],
+    stateMutability: "view",
   },
 ] as const;
 
@@ -44,6 +64,7 @@ export function CreateOrderForm({
   defaultToken0: Address;
   defaultToken1: Address;
 }) {
+  const config = useConfig();
   const { address: userAddress, isConnected, chain } = useAccount();
   const chainId = useChainId();
   const p2pAddress = getP2PAddress(chainId);
@@ -53,14 +74,27 @@ export function CreateOrderForm({
   const [maxPrice, setMaxPrice] = useState("");
   const [minPrice, setMinPrice] = useState("");
   const [needsApproval, setNeedsApproval] = useState(false);
+  const [pythContractAddress, setPythContractAddress] = useState<Address | null>(null);
 
   const token0 = defaultToken0;
   const token1 = defaultToken1;
   const tokenInfo0 = tokenInfoMap[token0];
+  const tokenInfo1 = tokenInfoMap[token1];
   const token0Symbol = tokenInfo0?.symbol ?? "Token";
+  const token1Symbol = tokenInfo1?.symbol ?? "Token";
   const token0Decimals = tokenInfo0?.decimals ?? 18;
 
   const isWethMarket = tokenInfo0?.symbol === "WETH";
+
+  // Calculate current exchange rate for display
+  const getCurrentExchangeRate = () => {
+    if (!tokenInfo0?.lastPrice || !tokenInfo1?.lastPrice) return null;
+    // Exchange rate = price0 / price1 (how much token1 per token0)
+    const rate = tokenInfo0.lastPrice / tokenInfo1.lastPrice;
+    return rate;
+  };
+
+  const currentExchangeRate = getCurrentExchangeRate();
 
   const {
     data: balanceData,
@@ -143,6 +177,26 @@ export function CreateOrderForm({
     }
   }, [isApproved, refetchAllowance]);
 
+  useEffect(() => {
+    if (!p2pAddress || pythContractAddress) return;
+
+    const fetchPythContractAddress = async () => {
+      try {
+        const address = await readContract(config, {
+          address: p2pAddress,
+          abi: p2pAbi,
+          functionName: "pyth",
+          chainId,
+        });
+        setPythContractAddress(address as Address);
+      } catch (error) {
+        console.error("Error fetching Pyth contract address:", error);
+      }
+    };
+
+    fetchPythContractAddress();
+  }, [p2pAddress, config, chainId, pythContractAddress]);
+
   const handleApprove = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token0 || !amount0) return;
@@ -157,9 +211,32 @@ export function CreateOrderForm({
 
   const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (needsApproval || !token0 || !token1 || !amount0) return;
+    if (needsApproval || !token0 || !token1 || !amount0 || !tokenInfo0?.priceFeedId || !pythContractAddress) {
+      console.log("Cannot create order: missing requirements");
+      return;
+    }
 
     try {
+      const priceFeedsUrl = `https://hermes.pyth.network/api/latest_vaas?ids[]=${tokenInfo0.priceFeedId}`;
+
+      const response = await fetch(priceFeedsUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch fresh Pyth data: ${response.statusText}`);
+      }
+
+      const pythData = await response.json();
+      const freshPriceUpdateArray = pythData.map(
+        (vaa: string) => ("0x" + Buffer.from(vaa, "base64").toString("hex")) as `0x${string}`
+      );
+
+      const freshFee = await readContract(config, {
+        address: pythContractAddress,
+        abi: pythAbi,
+        functionName: "getUpdateFee",
+        args: [freshPriceUpdateArray],
+        chainId,
+      });
+
       const formattedAmount0 = parseUnits(amount0, token0Decimals);
       const formattedMaxPrice = maxPrice ? parseUnits(maxPrice, 18) : 0n;
       const formattedMinPrice = minPrice ? parseUnits(minPrice, 18) : 0n;
@@ -174,10 +251,12 @@ export function CreateOrderForm({
           formattedAmount0,
           formattedMaxPrice,
           formattedMinPrice,
+          freshPriceUpdateArray,
         ],
+        value: freshFee,
       });
     } catch (err) {
-      console.error("Formatting/submission error:", err);
+      console.error("An error occurred in handleCreateOrder:", err);
     }
   };
 
@@ -210,6 +289,24 @@ export function CreateOrderForm({
           )}
         </div>
       </div>
+
+      {/* Minimum Order Info */}
+      <div style={styles.warningBox}>
+        <span style={styles.infoIcon}>ℹ️</span>
+        <div style={styles.infoText}>
+          Minimum order value: $10 USD
+        </div>
+      </div>
+
+      {/* Current Exchange Rate Info */}
+      {currentExchangeRate !== null && (
+        <div style={styles.infoBox}>
+          <span style={styles.infoIcon}>💱</span>
+          <div style={styles.infoText}>
+            Current rate: {currentExchangeRate.toFixed(8)} {token1Symbol} per {token0Symbol}
+          </div>
+        </div>
+      )}
 
       {/* Amount Input */}
       <div style={styles.inputGroup}>
@@ -254,12 +351,20 @@ export function CreateOrderForm({
         </div>
       </div>
 
-      {/* Price Range */}
+      {/* Exchange Rate Range */}
 
       <div style={styles.priceRange}>
         <div style={styles.priceInputs}>
           <div style={styles.priceInputGroup}>
-            <label style={styles.smallLabel}>Min Price (Optional)</label>
+            <label style={styles.smallLabel}>
+              Min Exchange Rate (Optional)
+              <span
+                style={{ ...styles.tooltip, marginLeft: "0.25rem" }}
+                title={`Minimum ${token1Symbol} per ${token0Symbol} you'll accept`}
+              >
+                ⓘ
+              </span>
+            </label>
 
             <input
               type="text"
@@ -273,7 +378,15 @@ export function CreateOrderForm({
           <div style={styles.priceSeparator}>→</div>
 
           <div style={styles.priceInputGroup}>
-            <label style={styles.smallLabel}>Max Price (Optional)</label>
+            <label style={styles.smallLabel}>
+              Max Exchange Rate (Optional)
+              <span
+                style={{ ...styles.tooltip, marginLeft: "0.25rem" }}
+                title={`Maximum ${token1Symbol} per ${token0Symbol} you'll accept`}
+              >
+                ⓘ
+              </span>
+            </label>
 
             <input
               type="text"
@@ -338,8 +451,18 @@ export function CreateOrderForm({
       {createOrderStatus === "error" && (
         <div style={styles.errorMessage}>
           <span>⚠</span>{" "}
-          {(createOrderError as BaseError)?.shortMessage ||
-            createOrderError?.message}
+          {(() => {
+            const error = createOrderError as BaseError;
+            const errorMsg = error?.shortMessage || error?.message || "";
+            const errorString = JSON.stringify(error);
+
+            if (errorMsg.includes("OrderValueTooLow") ||
+                errorString.includes("OrderValueTooLow") ||
+                errorString.includes("0x64a6d4a3")) {
+              return "Order value too low. Minimum order value is $10 USD.";
+            }
+            return errorMsg;
+          })()}
         </div>
       )}
 
@@ -568,6 +691,36 @@ const styles = {
     display: "flex",
     alignItems: "center",
     gap: "0.5rem",
+  },
+
+  infoBox: {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.75rem",
+    padding: "0.875rem",
+    background: "rgba(139, 92, 246, 0.05)",
+    border: "1px solid rgba(139, 92, 246, 0.2)",
+    borderRadius: "0.5rem",
+  },
+
+  warningBox: {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.75rem",
+    padding: "0.875rem",
+    background: "rgba(245, 158, 11, 0.05)",
+    border: "1px solid rgba(245, 158, 11, 0.2)",
+    borderRadius: "0.5rem",
+  },
+
+  infoIcon: {
+    fontSize: "1.25rem",
+  },
+
+  infoText: {
+    fontSize: "0.875rem",
+    color: "#a855f7",
+    lineHeight: "1.4",
   },
 
   warningMessage: {
