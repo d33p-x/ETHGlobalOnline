@@ -2,14 +2,24 @@
 "use client";
 
 import Link from "next/link";
-import { useAccount, useConnect, useDisconnect } from "wagmi";
+import { useAccount, useConnect, useDisconnect, useSwitchChain } from "wagmi";
 import { NetworkSelector } from "./components/NetworkSelector";
+import { baseSepolia } from "wagmi/chains";
+import { useEffect } from "react";
 
 function WalletConnect() {
   // ... (this component remains the same)
   const account = useAccount();
   const { connectors, connect, status, error } = useConnect();
   const { disconnect } = useDisconnect();
+  const { switchChain } = useSwitchChain();
+
+  // Auto-switch to Base Sepolia when connected to wrong network
+  useEffect(() => {
+    if (account.isConnected && account.chainId !== baseSepolia.id) {
+      switchChain({ chainId: baseSepolia.id });
+    }
+  }, [account.isConnected, account.chainId, switchChain]);
 
   return (
     <div className="margin-left-auto">
