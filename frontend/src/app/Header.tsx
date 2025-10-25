@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { useAccount, useConnect, useDisconnect } from "wagmi";
+import { NetworkSelector } from "./components/NetworkSelector";
 
 function WalletConnect() {
   // ... (this component remains the same)
@@ -54,6 +55,9 @@ export function Header() {
           My Orders
         </Link>
       )}
+
+      {/* Network Selector */}
+      <NetworkSelector />
 
       <WalletConnect />
     </header>

@@ -6,9 +6,10 @@ import {
   useAccount,
   useWriteContract,
   useWaitForTransactionReceipt,
+  useChainId,
 } from "wagmi";
 import { type Address, BaseError, parseUnits } from "viem";
-import { P2P_CONTRACT_ADDRESS } from "./config";
+import { getP2PAddress } from "./config";
 
 
 const p2pAbi = [
@@ -41,6 +42,8 @@ export function CancelReduceOrderForm({
   defaultToken1: Address;
 }) {
   const { isConnected } = useAccount();
+  const chainId = useChainId();
+  const p2pAddress = getP2PAddress(chainId);
 
   // 2. Remove internal state for tokens
   // const [token0, setToken0] = useState<Address>(...);
@@ -74,7 +77,7 @@ export function CancelReduceOrderForm({
       const formattedOrderId = BigInt(orderId);
 
       cancelReduceWriteContract({
-        address: P2P_CONTRACT_ADDRESS,
+        address: p2pAddress,
         abi: p2pAbi,
         functionName: "cancelOrReduceOrder",
         args: [

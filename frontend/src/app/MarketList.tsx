@@ -2,14 +2,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAccount, usePublicClient, useWatchContractEvent } from "wagmi";
-import { foundry } from "wagmi/chains";
-import { type Address, type Log } from "viem";
-import { P2P_CONTRACT_ADDRESS } from "./config";
+import { useAccount, usePublicClient, useWatchContractEvent, useChainId } from "wagmi";
+import { type Address } from "viem";
+import { getP2PAddress } from "./config";
 import Link from "next/link"; // <-- 1. Import Link
-import { tokenInfoMap } from "./tokenConfig"; // <-- 1. Import
+import { getTokenInfoMap } from "./tokenConfig"; // <-- 1. Import
 
-// ... (P2P_CONTRACT_ADDRESS and p2pAbi remain the same) ...
+// ... (p2pAddress and p2pAbi remain the same) ...
 
 
 const p2pAbi = [
@@ -32,25 +31,29 @@ type Market = {
 };
 
 export function MarketList() {
+  const chainId = useChainId();
+  const p2pAddress = getP2PAddress(chainId);
+  const tokenInfoMap = getTokenInfoMap(chainId);
+
   const [markets, setMarkets] = useState<Market[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const { chain } = useAccount();
   const client = usePublicClient({
-    chainId: chain?.id ?? foundry.id,
+    chainId: chain?.id ?? chainId,
   });
 
   // ... (useEffect and useWatchContractEvent hooks remain exactly the same) ...
 
   useEffect(() => {
-    if (!client || client.chain.id !== foundry.id) {
+    if (!client || client.chain.id !== chainId) {
       if (client) {
         console.warn(
-          `Client chain ID is ${client.chain.id}, expected ${foundry.id}. Waiting for connection to Anvil.`
+          `Client chain ID is ${client.chain.id}, expected ${chainId}. Waiting for connection to Anvil.`
         );
         setError(
-          `Please connect your wallet to the Anvil network (Chain ID ${foundry.id}).`
+          `Please connect your wallet to the Anvil network (Chain ID ${chainId}).`
         );
       } else {
         console.warn("Public client not available yet.");
@@ -67,7 +70,7 @@ export function MarketList() {
           `Fetching historical market logs from chain ${client.chain.id}...`
         );
         const logs = await client.getLogs({
-          address: P2P_CONTRACT_ADDRESS,
+          address: p2pAddress,
           event: p2pAbi[0],
           fromBlock: 0n,
           toBlock: "latest",
@@ -92,11 +95,12 @@ export function MarketList() {
     };
 
     fetchLogs();
-  }, [client]);
+  }, [client, p2pAddress, chainId]);
 
+  // Watch for new markets in real-time (works with DRPC)
   useWatchContractEvent({
-    chainId: foundry.id,
-    address: P2P_CONTRACT_ADDRESS,
+    chainId: chainId,
+    address: p2pAddress,
     abi: p2pAbi,
     eventName: "MarketCreated",
     onLogs(logs) {
@@ -112,6 +116,7 @@ export function MarketList() {
           token1: log.args.token1!,
         };
         setMarkets((prevMarkets) => {
+          // Check if market already exists
           if (prevMarkets.find((m) => m.marketId === newMarket.marketId)) {
             return prevMarkets;
           }
@@ -121,7 +126,6 @@ export function MarketList() {
     },
     onError(error) {
       console.error("Error watching contract events:", error);
-      setError(`Error listening for new markets: ${error.message}`);
     },
   });
 

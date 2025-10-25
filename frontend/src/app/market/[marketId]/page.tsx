@@ -3,9 +3,10 @@
 
 import { useSearchParams } from "next/navigation";
 import { type Address } from "viem";
+import { useChainId } from "wagmi";
 
 // --- 1. Import your token config and the new chart component ---
-import { tokenInfoMap } from "@/app/tokenConfig";
+import { getTokenInfoMap } from "@/app/tokenConfig";
 import LightweightMarketChart from "@/app/LightweightMarketChart";
 
 // Import your existing components
@@ -19,13 +20,15 @@ export default function MarketPage({
   params: { marketId: string };
 }) {
   const searchParams = useSearchParams();
+  const chainId = useChainId();
 
   // --- 2. Get token addresses from URL (like your other forms) ---
   const token0 = searchParams.get("token0") as Address | undefined;
   const token1 = searchParams.get("token1") as Address | undefined;
   const marketId = params.marketId;
 
-  // --- 3. Look up symbols from your tokenConfig ---
+  // --- 3. Look up symbols from your tokenConfig (network-aware) ---
+  const tokenInfoMap = getTokenInfoMap(chainId);
   const symbol0 = token0 ? tokenInfoMap[token0]?.symbol : undefined; // e.g., "WETH"
   const symbol1 = token1 ? tokenInfoMap[token1]?.symbol : undefined; // e.g., "USDC"
 

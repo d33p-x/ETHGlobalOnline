@@ -7,14 +7,13 @@ import {
   usePublicClient,
   useWriteContract, // 1. Import write hooks
   useWaitForTransactionReceipt,
+  useChainId,
 } from "wagmi";
-import { foundry } from "wagmi/chains";
 import { type Address, type Log, formatUnits, BaseError } from "viem";
-import { tokenInfoMap } from "./tokenConfig";
-import { P2P_CONTRACT_ADDRESS } from "./config";
+import { getTokenInfoMap } from "./tokenConfig";
+import { getP2PAddress, getStartBlock } from "./config";
 
 // --- Config ---
-
 
 // 2. Add 'cancelOrReduceOrder' ABI
 const p2pAbi = [
@@ -106,7 +105,9 @@ type Fill = {
 
 export function MyOrders() {
   const { address, isConnected } = useAccount();
-  const client = usePublicClient({ chainId: foundry.id });
+  const chainId = useChainId();
+  const tokenInfoMap = getTokenInfoMap(chainId);
+  const client = usePublicClient({ chainId: chainId });
 
   const [openOrders, setOpenOrders] = useState<OrderMap>(new Map());
   const [filledOrders, setFilledOrders] = useState<Fill[]>([]);
@@ -145,26 +146,30 @@ export function MyOrders() {
     setIsLoading(true);
     setError(null);
     try {
+      // Get current block and deployment block from config
+      const latestBlock = await client.getBlockNumber();
+      const fromBlock = getStartBlock(chainId, latestBlock);
+
       // 1. Fetch all orders CREATED by user
       const createdLogs = await client.getLogs({
-        address: P2P_CONTRACT_ADDRESS,
+        address: getP2PAddress(chainId),
         event: p2pOrderEventsAbi[0], // OrderCreated
         args: {
           maker: address, // <-- Filter by connected user!
         },
-        fromBlock: 0n,
-        toBlock: "latest",
+        fromBlock,
+        toBlock: latestBlock,
       });
 
       // 2. Fetch all orders FILLED by user (as taker)
       const filledLogsAsTaker = await client.getLogs({
-        address: P2P_CONTRACT_ADDRESS,
+        address: getP2PAddress(chainId),
         event: p2pOrderEventsAbi[2], // OrderFilled
         args: {
           taker: address, // <-- Filter by connected user!
         },
-        fromBlock: 0n,
-        toBlock: "latest",
+        fromBlock,
+        toBlock: latestBlock,
       });
 
       // ... (rest of the log processing logic is the same) ...
@@ -199,17 +204,17 @@ export function MyOrders() {
       }
 
       const reducedLogs = await client.getLogs({
-        address: P2P_CONTRACT_ADDRESS,
+        address: getP2PAddress(chainId),
         event: p2pOrderEventsAbi[1], // OrderReducedOrCancelled
-        fromBlock: 0n,
-        toBlock: "latest",
+        fromBlock,
+        toBlock: latestBlock,
       });
 
       const filledLogs = await client.getLogs({
-        address: P2P_CONTRACT_ADDRESS,
+        address: getP2PAddress(chainId),
         event: p2pOrderEventsAbi[2], // OrderFilled
-        fromBlock: 0n,
-        toBlock: "latest",
+        fromBlock,
+        toBlock: latestBlock,
       });
 
       for (const log of reducedLogs) {
@@ -258,7 +263,7 @@ export function MyOrders() {
     setCancellingOrderId(order.orderId); // Set loading state for this row
 
     cancelWriteContract({
-      address: P2P_CONTRACT_ADDRESS,
+      address: getP2PAddress(chainId),
       abi: p2pAbi,
       functionName: "cancelOrReduceOrder",
       args: [

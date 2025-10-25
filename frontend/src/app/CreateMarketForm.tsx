@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useWriteContract, useWaitForTransactionReceipt, useChainId } from "wagmi";
 import { type Address, BaseError } from "viem";
-import { P2P_CONTRACT_ADDRESS, TOKEN_ADDRESSES } from "./config";
+import { getP2PAddress, getTokenAddresses } from "./config";
 
 // --- ABI for createMarket ---
 // The minimal ABI just for the createMarket function
@@ -21,10 +21,14 @@ const p2pAbi = [
 ] as const;
 
 export function CreateMarketForm() {
+  const chainId = useChainId();
+  const tokenAddresses = getTokenAddresses(chainId);
+  const p2pAddress = getP2PAddress(chainId);
+
   // --- Form State ---
   // Default to WETH and USDC from config
-  const [token0, setToken0] = useState<Address>(TOKEN_ADDRESSES.WETH);
-  const [token1, setToken1] = useState<Address>(TOKEN_ADDRESSES.USDC);
+  const [token0, setToken0] = useState<Address>(tokenAddresses.WETH);
+  const [token1, setToken1] = useState<Address>(tokenAddresses.USDC);
 
   // --- Wagmi Hook ---
   const { writeContract, data: hash, status, error } = useWriteContract();
@@ -39,7 +43,7 @@ export function CreateMarketForm() {
 
     // The arguments are already in the correct format (Address)
     writeContract({
-      address: P2P_CONTRACT_ADDRESS,
+      address: p2pAddress,
       abi: p2pAbi,
       functionName: "createMarket",
       args: [token0, token1],

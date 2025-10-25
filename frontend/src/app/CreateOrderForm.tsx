@@ -1,6 +1,5 @@
 // src/app/CreateOrderForm.tsx
 "use client";
-import { foundry } from "wagmi/chains";
 import { useState, useEffect } from "react";
 import {
   useAccount,
@@ -8,6 +7,7 @@ import {
   useWaitForTransactionReceipt,
   useReadContract,
   useBalance,
+  useChainId,
 } from "wagmi";
 import {
   type Address,
@@ -17,8 +17,8 @@ import {
   maxUint256,
 } from "viem";
 import { erc20Abi } from "viem";
-import { tokenInfoMap } from "@/app/tokenConfig";
-import { P2P_CONTRACT_ADDRESS } from "./config";
+import { getTokenInfoMap } from "@/app/tokenConfig";
+import { getP2PAddress } from "./config";
 
 const p2pAbi = [
   {
@@ -44,6 +44,9 @@ export function CreateOrderForm({
   defaultToken1: Address;
 }) {
   const { address: userAddress, isConnected, chain } = useAccount();
+  const chainId = useChainId();
+  const p2pAddress = getP2PAddress(chainId);
+  const tokenInfoMap = getTokenInfoMap(chainId);
 
   const [amount0, setAmount0] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
@@ -62,7 +65,7 @@ export function CreateOrderForm({
   } = useBalance({
     address: userAddress,
     token: token0,
-    chainId: foundry.id,
+    chainId: chainId,
     query: {
       enabled: isConnected && !!token0 && token0 !== "0x",
     },
@@ -77,19 +80,19 @@ export function CreateOrderForm({
     abi: erc20Abi,
     functionName: "allowance",
     args:
-      userAddress && P2P_CONTRACT_ADDRESS
-        ? [userAddress, P2P_CONTRACT_ADDRESS]
+      userAddress && p2pAddress
+        ? [userAddress, p2pAddress]
         : undefined,
-    chainId: foundry.id,
+    chainId: chainId,
     query: {
       enabled:
         isConnected &&
         !!userAddress &&
         !!token0 &&
         token0 !== "0x" &&
-        !!P2P_CONTRACT_ADDRESS &&
+        !!p2pAddress &&
         !!amount0 &&
-        chain?.id === foundry.id,
+        chain?.id === chainId,
     },
   });
 
@@ -147,7 +150,7 @@ export function CreateOrderForm({
       address: token0,
       abi: erc20Abi,
       functionName: "approve",
-      args: [P2P_CONTRACT_ADDRESS, maxUint256],
+      args: [p2pAddress, maxUint256],
     });
   };
 
@@ -161,7 +164,7 @@ export function CreateOrderForm({
       const formattedMinPrice = minPrice ? parseUnits(minPrice, 18) : 0n;
 
       createOrderWriteContract({
-        address: P2P_CONTRACT_ADDRESS,
+        address: p2pAddress,
         abi: p2pAbi,
         functionName: "createOrder",
         args: [

@@ -25,4 +25,12 @@ contract MockERC20 is ERC20 {
     function burn(address from, uint256 amount) external {
         _burn(from, amount);
     }
+
+    /**
+     * @notice Public faucet - anyone can mint 1000 tokens per call
+     * @dev Useful for testnet where users need tokens to trade
+     */
+    function faucet() external {
+        _mint(msg.sender, 1000 * 10**_decimals);
+    }
 }

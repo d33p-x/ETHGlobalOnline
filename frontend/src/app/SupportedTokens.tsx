@@ -2,11 +2,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePublicClient } from "wagmi";
-import { foundry } from "wagmi/chains";
+import { usePublicClient, useChainId, useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { type Address, erc20Abi } from "viem";
 import { useReadContract } from "wagmi";
-import { P2P_CONTRACT_ADDRESS } from "./config";
+import { getP2PAddress } from "./config";
 
 // --- Config ---
  // Your contract
@@ -25,6 +24,23 @@ const p2pAbi = [
   },
 ] as const;
 
+// MockERC20 ABI for mint function
+const mockERC20Abi = [
+  {
+    type: "function",
+    name: "mint",
+    inputs: [
+      { name: "to", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+] as const;
+
+// Tokens that are official testnet versions (not our deployed mocks)
+const OFFICIAL_TOKENS = ["WETH", "USDC", "LINK"];
+
 type TokenInfo = {
   address: Address;
   feedId: string;
@@ -34,6 +50,8 @@ type TokenInfo = {
  * A small component to fetch and display token info dynamically
  */
 function TokenRow({ address }: { address: Address }) {
+  const { address: userAddress } = useAccount();
+
   const { data: symbol, isLoading: isLoadingSymbol } = useReadContract({
     address: address,
     abi: erc20Abi,
@@ -45,24 +63,75 @@ function TokenRow({ address }: { address: Address }) {
     functionName: "decimals",
   });
 
+  // Determine if this is a mock token (not WETH, USDC, or LINK)
+  const tokenSymbol = symbol as string | undefined;
+  const isMockToken = tokenSymbol && !OFFICIAL_TOKENS.includes(tokenSymbol);
+
+  // Mint functionality
+  const { writeContract, data: hash, isPending } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+    hash,
+  });
+
+  const handleMint = () => {
+    if (!userAddress || !decimals) return;
+
+    // Mint 1000 tokens (adjusted for decimals)
+    const amount = BigInt(1000) * BigInt(10 ** decimals);
+
+    writeContract({
+      address: address,
+      abi: mockERC20Abi,
+      functionName: "mint",
+      args: [userAddress, amount],
+    });
+  };
+
   const isLoading = isLoadingSymbol || isLoadingDecimals;
 
   return (
-    <li key={address}>
-      <strong>{isLoading ? "..." : symbol}</strong> (
-      {isLoading ? "..." : decimals?.toString()} decimals)
-      <br />
-      {address}
+    <li key={address} style={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: "1rem"
+    }}>
+      <div>
+        <strong>{isLoading ? "..." : symbol}</strong> (
+        {isLoading ? "..." : decimals?.toString()} decimals)
+        <br />
+        <span style={{ fontSize: "0.875rem", color: "var(--text-muted)" }}>
+          {address}
+        </span>
+      </div>
+      {isMockToken && (
+        <button
+          onClick={handleMint}
+          disabled={isPending || isConfirming || !userAddress}
+          style={{
+            padding: "0.5rem 1rem",
+            fontSize: "0.875rem",
+            cursor: userAddress ? "pointer" : "not-allowed",
+            opacity: isPending || isConfirming ? 0.6 : 1,
+            minWidth: "80px",
+          }}
+        >
+          {isPending ? "Confirming..." : isConfirming ? "Minting..." : isSuccess ? "Minted!" : "Mint"}
+        </button>
+      )}
     </li>
   );
 }
 
 export function SupportedTokens() {
+  const chainId = useChainId();
+  const p2pAddress = getP2PAddress(chainId);
+
   const [tokens, setTokens] = useState<Map<Address, TokenInfo>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const client = usePublicClient({ chainId: foundry.id });
+  const client = usePublicClient({ chainId });
 
   useEffect(() => {
     if (!client) return;
@@ -72,7 +141,7 @@ export function SupportedTokens() {
       setError(null);
       try {
         const logs = await client.getLogs({
-          address: P2P_CONTRACT_ADDRESS,
+          address: p2pAddress,
           event: p2pAbi[0], // PriceFeedSet
           fromBlock: 0n,
           toBlock: "latest",
@@ -100,7 +169,7 @@ export function SupportedTokens() {
     };
 
     fetchLogs();
-  }, [client]);
+  }, [client, p2pAddress]);
 
   const tokenArray = Array.from(tokens.values());
 

@@ -2,13 +2,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePublicClient, useWatchContractEvent } from "wagmi";
-import { foundry } from "wagmi/chains"; // Your chain config
-import { type Address, type Log, formatUnits } from "viem";
-import { P2P_CONTRACT_ADDRESS } from "./config";
+import { usePublicClient, useWatchContractEvent, useChainId } from "wagmi";
+import { type Address, formatUnits } from "viem";
+import { getP2PAddress, getStartBlock } from "./config";
 
 // --- Config ---
- // Ensure this is correct!
+// Ensure this is correct!
 
 // ABI including ONLY the order-related events
 const p2pOrderEventsAbi = [
@@ -66,6 +65,8 @@ type Order = {
   remainingAmount0: bigint; // Track remaining amount after fills/reductions
   maxPrice: bigint;
   minPrice: bigint;
+  decimals0?: number; // Store token0 decimals
+  decimals1?: number; // Store token1 decimals
 };
 
 // Map to store orders, keyed by orderId
@@ -82,13 +83,48 @@ function formatToMaxDecimals(value: string, maxDecimals: number = 4): string {
 }
 
 export function OrderList({ marketId }: { marketId: string }) {
+  const chainId = useChainId();
+  const p2pAddress = getP2PAddress(chainId);
+
   const [orders, setOrders] = useState<OrderMap>(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [decimalsCache, setDecimalsCache] = useState<Map<Address, number>>(
+    new Map()
+  );
 
-  const decimals0 = 18;
+  const client = usePublicClient({ chainId });
 
-  const client = usePublicClient({ chainId: foundry.id });
+  // Helper function to get token decimals
+  const getTokenDecimals = async (tokenAddress: Address): Promise<number> => {
+    // Check cache first
+    if (decimalsCache.has(tokenAddress)) {
+      return decimalsCache.get(tokenAddress)!;
+    }
+
+    try {
+      const decimals = (await client.readContract({
+        address: tokenAddress,
+        abi: [
+          {
+            name: "decimals",
+            type: "function",
+            stateMutability: "view",
+            inputs: [],
+            outputs: [{ type: "uint8" }],
+          },
+        ],
+        functionName: "decimals",
+      })) as number;
+
+      // Update cache
+      setDecimalsCache((prev) => new Map(prev).set(tokenAddress, decimals));
+      return decimals;
+    } catch (err) {
+      console.warn(`Failed to get decimals for ${tokenAddress}, using 18`);
+      return 18; // Default fallback
+    }
+  };
 
   // --- Fetch historical events for the selected market ---
   useEffect(() => {
@@ -103,46 +139,55 @@ export function OrderList({ marketId }: { marketId: string }) {
       setError(null);
       console.log(`Fetching order logs for marketId: ${marketId}`);
       try {
+        // Get current block number
+        const latestBlock = await client.getBlockNumber();
+        console.log(`Latest block: ${latestBlock}`);
+
+        // Get deployment block from config
+        const fromBlock = getStartBlock(chainId, latestBlock);
+
+        console.log(`Fetching logs from block ${fromBlock} to ${latestBlock}`);
+
         // 1. Fetch OrderCreated events
         const createdLogs = await client.getLogs({
-          address: P2P_CONTRACT_ADDRESS,
+          address: p2pAddress,
           event: p2pOrderEventsAbi[0], // OrderCreated
           args: {
             marketId: marketId as `0x${string}`, // Filter by marketId
           },
-          fromBlock: 0n,
-          toBlock: "latest",
+          fromBlock,
+          toBlock: latestBlock,
         });
         console.log(`Found ${createdLogs.length} OrderCreated logs`);
 
         // 2. Fetch OrderReducedOrCancelled events
         const reducedLogs = await client.getLogs({
-          address: P2P_CONTRACT_ADDRESS,
+          address: p2pAddress,
           event: p2pOrderEventsAbi[1], // OrderReducedOrCancelled
           args: {
             marketId: marketId as `0x${string}`, // Filter by marketId
           },
-          fromBlock: 0n,
-          toBlock: "latest",
+          fromBlock,
+          toBlock: latestBlock,
         });
         console.log(`Found ${reducedLogs.length} OrderReducedOrCancelled logs`);
 
         // 3. Fetch OrderFilled events
         const filledLogs = await client.getLogs({
-          address: P2P_CONTRACT_ADDRESS,
+          address: p2pAddress,
           event: p2pOrderEventsAbi[2], // OrderFilled
           args: {
             marketId: marketId as `0x${string}`, // Filter by marketId
           },
-          fromBlock: 0n,
-          toBlock: "latest",
+          fromBlock,
+          toBlock: latestBlock,
         });
         console.log(`Found ${filledLogs.length} OrderFilled logs`);
 
         // --- Process logs to build current order state ---
         const initialOrders: OrderMap = new Map();
 
-        // Process creations first
+        // Process creations first - fetch decimals for each unique token
         for (const log of createdLogs) {
           const {
             orderId,
@@ -162,6 +207,10 @@ export function OrderList({ marketId }: { marketId: string }) {
             maxPrice !== undefined &&
             minPrice !== undefined
           ) {
+            // Fetch decimals for both tokens
+            const decimals0 = await getTokenDecimals(token0);
+            const decimals1 = await getTokenDecimals(token1);
+
             initialOrders.set(orderId, {
               orderId: orderId,
               maker: maker,
@@ -171,6 +220,8 @@ export function OrderList({ marketId }: { marketId: string }) {
               remainingAmount0: amount0, // Start with full amount
               maxPrice: maxPrice,
               minPrice: minPrice,
+              decimals0,
+              decimals1,
             });
           }
         }
@@ -243,19 +294,19 @@ export function OrderList({ marketId }: { marketId: string }) {
    * Watch for new OrderCreated events
    */
   useWatchContractEvent({
-    address: P2P_CONTRACT_ADDRESS,
+    address: p2pAddress,
     abi: p2pOrderEventsAbi,
     eventName: "OrderCreated",
     args: {
       marketId: marketId as `0x${string}`,
     },
     enabled: !!marketId, // Only watch if marketId is set
-    onLogs(logs) {
+    async onLogs(logs) {
       console.log("New OrderCreated event(s) detected:", logs);
-      setOrders((prevOrders) => {
-        // Use a new Map based on previous state for immutability
-        const newOrders = new Map(prevOrders);
-        for (const log of logs) {
+
+      // Fetch decimals for new orders
+      const ordersWithDecimals = await Promise.all(
+        logs.map(async (log) => {
           const {
             orderId,
             maker,
@@ -275,20 +326,34 @@ export function OrderList({ marketId }: { marketId: string }) {
             maxPrice !== undefined &&
             minPrice !== undefined
           ) {
-            // Add the new order to the map
-            newOrders.set(orderId, {
+            const decimals0 = await getTokenDecimals(token0);
+            const decimals1 = await getTokenDecimals(token1);
+
+            return {
               orderId,
               maker,
               token0,
               token1,
               initialAmount0: amount0,
-              remainingAmount0: amount0, // New order starts with full amount
+              remainingAmount0: amount0,
               maxPrice,
               minPrice,
-            });
+              decimals0,
+              decimals1,
+            };
+          }
+          return null;
+        })
+      );
+
+      setOrders((prevOrders) => {
+        const newOrders = new Map(prevOrders);
+        for (const order of ordersWithDecimals) {
+          if (order) {
+            newOrders.set(order.orderId, order);
           }
         }
-        return newOrders; // Return the new state
+        return newOrders;
       });
     },
   });
@@ -297,7 +362,7 @@ export function OrderList({ marketId }: { marketId: string }) {
    * Watch for new OrderReducedOrCancelled events
    */
   useWatchContractEvent({
-    address: P2P_CONTRACT_ADDRESS,
+    address: p2pAddress,
     abi: p2pOrderEventsAbi,
     eventName: "OrderReducedOrCancelled",
     args: {
@@ -347,7 +412,7 @@ export function OrderList({ marketId }: { marketId: string }) {
    * Watch for new OrderFilled events
    */
   useWatchContractEvent({
-    address: P2P_CONTRACT_ADDRESS,
+    address: p2pAddress,
     abi: p2pOrderEventsAbi,
     eventName: "OrderFilled",
     args: {
@@ -400,18 +465,22 @@ export function OrderList({ marketId }: { marketId: string }) {
   const orderArray = Array.from(orders.values());
 
   return (
-    <div style={{
-      background: "var(--bg-card)",
-      padding: "1rem",
-      borderRadius: "0.75rem",
-      border: "1px solid var(--border-color)",
-      boxShadow: "var(--shadow-md)",
-      height: "100%",
-      display: "flex",
-      flexDirection: "column",
-      overflow: "hidden"
-    }}>
-      <h3 style={{ marginBottom: "0.75rem", fontSize: "1.125rem" }}>Order Book</h3>
+    <div
+      style={{
+        background: "var(--bg-card)",
+        padding: "1rem",
+        borderRadius: "0.75rem",
+        border: "1px solid var(--border-color)",
+        boxShadow: "var(--shadow-md)",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+      }}
+    >
+      <h3 style={{ marginBottom: "0.75rem", fontSize: "1.125rem" }}>
+        Order Book
+      </h3>
 
       {!marketId ? (
         <p style={{ fontSize: "0.875rem" }}>Market ID not found.</p>
@@ -438,7 +507,11 @@ export function OrderList({ marketId }: { marketId: string }) {
                 <tr key={order.orderId.toString()}>
                   <td>{order.orderId.toString()}</td>
                   <td>{order.maker.substring(0, 8)}...</td>
-                  <td>{formatToMaxDecimals(formatUnits(order.remainingAmount0, decimals0))}</td>
+                  <td>
+                    {formatToMaxDecimals(
+                      formatUnits(order.remainingAmount0, order.decimals0 ?? 18)
+                    )}
+                  </td>
                   <td>
                     {order.minPrice > 0n
                       ? formatToMaxDecimals(formatUnits(order.minPrice, 18))

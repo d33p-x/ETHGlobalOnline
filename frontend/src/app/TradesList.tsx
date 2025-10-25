@@ -2,13 +2,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePublicClient, useWatchContractEvent } from "wagmi";
-import { foundry } from "wagmi/chains";
+import { usePublicClient, useWatchContractEvent, useChainId } from "wagmi";
 import { type Address, formatUnits } from "viem";
-import { P2P_CONTRACT_ADDRESS } from "./config";
+import { getP2PAddress, getStartBlock } from "./config";
 
 // --- Config ---
-
 
 // ABI for OrderFilled event
 const orderFilledEventAbi = [
@@ -49,6 +47,8 @@ function formatToMaxDecimals(value: string, maxDecimals: number = 4): string {
 }
 
 export function TradesList({ marketId }: { marketId: string }) {
+  const chainId = useChainId();
+
   const [trades, setTrades] = useState<Trade[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +56,7 @@ export function TradesList({ marketId }: { marketId: string }) {
   const decimals0 = 18;
   const decimals1 = 6; // Assuming USDC or similar
 
-  const client = usePublicClient({ chainId: foundry.id });
+  const client = usePublicClient({ chainId: chainId });
 
   // --- Fetch historical OrderFilled events ---
   useEffect(() => {
@@ -71,14 +71,25 @@ export function TradesList({ marketId }: { marketId: string }) {
       setError(null);
       console.log(`Fetching trade logs for marketId: ${marketId}`);
       try {
+        // Get current block number
+        const latestBlock = await client.getBlockNumber();
+        console.log(`Latest block: ${latestBlock}`);
+
+        // Get deployment block from config
+        const fromBlock = getStartBlock(chainId, latestBlock);
+
+        console.log(
+          `Fetching trade logs from block ${fromBlock} to ${latestBlock}`
+        );
+
         const filledLogs = await client.getLogs({
-          address: P2P_CONTRACT_ADDRESS,
+          address: getP2PAddress(chainId),
           event: orderFilledEventAbi[0],
           args: {
             marketId: marketId as `0x${string}`,
           },
-          fromBlock: 0n,
-          toBlock: "latest",
+          fromBlock,
+          toBlock: latestBlock,
         });
         console.log(`Found ${filledLogs.length} OrderFilled logs`);
 
@@ -116,7 +127,9 @@ export function TradesList({ marketId }: { marketId: string }) {
         }
 
         // Sort by block number descending (most recent first)
-        tradesData.sort((a, b) => Number(b.blockNumber) - Number(a.blockNumber));
+        tradesData.sort(
+          (a, b) => Number(b.blockNumber) - Number(a.blockNumber)
+        );
 
         // Keep only the most recent 50 trades
         setTrades(tradesData.slice(0, 50));
@@ -135,7 +148,7 @@ export function TradesList({ marketId }: { marketId: string }) {
 
   // --- Watch for new OrderFilled events ---
   useWatchContractEvent({
-    address: P2P_CONTRACT_ADDRESS,
+    address: getP2PAddress(chainId),
     abi: orderFilledEventAbi,
     eventName: "OrderFilled",
     args: {

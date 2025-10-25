@@ -1,6 +1,5 @@
 // src/app/FillOrderForm.tsx
 "use client";
-import { foundry } from "wagmi/chains";
 import { useState, useEffect } from "react";
 import {
   useAccount,
@@ -9,6 +8,7 @@ import {
   useReadContract,
   useBalance,
   usePublicClient,
+  useChainId,
 } from "wagmi";
 import {
   type Address,
@@ -18,8 +18,8 @@ import {
   maxUint256,
 } from "viem";
 import { erc20Abi } from "viem";
-import { tokenInfoMap } from "@/app/tokenConfig";
-import { P2P_CONTRACT_ADDRESS } from "./config";
+import { getTokenInfoMap } from "@/app/tokenConfig";
+import { getP2PAddress, getStartBlock } from "./config";
 
 const p2pAbi = [
   {
@@ -92,6 +92,9 @@ export function FillOrderForm({
   marketId: string;
 }) {
   const { address: userAddress, isConnected, chain } = useAccount();
+  const chainId = useChainId();
+  const p2pAddress = getP2PAddress(chainId);
+  const tokenInfoMap = getTokenInfoMap(chainId);
 
   const [amount1, setAmount1] = useState("");
   const [needsApproval, setNeedsApproval] = useState(false);
@@ -104,7 +107,7 @@ export function FillOrderForm({
   const token1Symbol = tokenInfoMap[token1]?.symbol ?? "Token";
   const token1Decimals = tokenInfoMap[token1]?.decimals ?? 18;
 
-  const client = usePublicClient({ chainId: foundry.id });
+  const client = usePublicClient({ chainId: chainId });
 
   const {
     data: balanceData,
@@ -113,7 +116,7 @@ export function FillOrderForm({
   } = useBalance({
     address: userAddress,
     token: token1,
-    chainId: foundry.id,
+    chainId: chainId,
     query: {
       enabled: isConnected && !!token1 && token1 !== "0x",
     },
@@ -127,20 +130,17 @@ export function FillOrderForm({
     address: token1,
     abi: erc20Abi,
     functionName: "allowance",
-    args:
-      userAddress && P2P_CONTRACT_ADDRESS
-        ? [userAddress, P2P_CONTRACT_ADDRESS]
-        : undefined,
-    chainId: foundry.id,
+    args: userAddress && p2pAddress ? [userAddress, p2pAddress] : undefined,
+    chainId: chainId,
     query: {
       enabled:
         isConnected &&
         !!userAddress &&
         !!token1 &&
         token1 !== "0x" &&
-        !!P2P_CONTRACT_ADDRESS &&
+        !!p2pAddress &&
         !!amount1 &&
-        chain?.id === foundry.id,
+        chain?.id === chainId,
     },
   });
 
@@ -174,36 +174,37 @@ export function FillOrderForm({
     const checkLiquidity = async () => {
       setIsCheckingLiquidity(true);
       try {
+        // Get current block and deployment block from config
+        const latestBlock = await client.getBlockNumber();
+        const fromBlock = getStartBlock(chainId, latestBlock);
+
         // Fetch all order events for this market
         const createdLogs = await client.getLogs({
-          address: P2P_CONTRACT_ADDRESS,
+          address: p2pAddress,
           event: orderEventAbi[0], // OrderCreated
           args: { marketId: marketId as `0x${string}` },
-          fromBlock: 0n,
-          toBlock: "latest",
+          fromBlock,
+          toBlock: latestBlock,
         });
 
         const cancelledLogs = await client.getLogs({
-          address: P2P_CONTRACT_ADDRESS,
+          address: p2pAddress,
           event: orderEventAbi[1], // OrderReducedOrCancelled
           args: { marketId: marketId as `0x${string}` },
-          fromBlock: 0n,
-          toBlock: "latest",
+          fromBlock,
+          toBlock: latestBlock,
         });
 
         const filledLogs = await client.getLogs({
-          address: P2P_CONTRACT_ADDRESS,
+          address: p2pAddress,
           event: orderEventAbi[2], // OrderFilled
           args: { marketId: marketId as `0x${string}` },
-          fromBlock: 0n,
-          toBlock: "latest",
+          fromBlock,
+          toBlock: latestBlock,
         });
 
         // Build order map
-        const orderMap = new Map<
-          bigint,
-          { remainingAmount0: bigint }
-        >();
+        const orderMap = new Map<bigint, { remainingAmount0: bigint }>();
 
         // Process created orders
         for (const log of createdLogs) {
@@ -290,7 +291,7 @@ export function FillOrderForm({
       address: token1,
       abi: erc20Abi,
       functionName: "approve",
-      args: [P2P_CONTRACT_ADDRESS, maxUint256],
+      args: [p2pAddress, maxUint256],
     });
   };
 
@@ -303,7 +304,7 @@ export function FillOrderForm({
       const priceUpdateArray: `0x${string}`[] = [];
 
       fillOrderWriteContract({
-        address: P2P_CONTRACT_ADDRESS,
+        address: p2pAddress,
         abi: p2pAbi,
         functionName: "fillOrderExactAmountIn",
         args: [priceUpdateArray, token0, token1, formattedAmount1],
@@ -346,7 +347,10 @@ export function FillOrderForm({
       <div style={styles.inputGroup}>
         <label style={styles.label}>
           Amount to Spend
-          <span style={styles.tooltip} title={`Spend ${token1Symbol} to buy ${token0Symbol}`}>
+          <span
+            style={styles.tooltip}
+            title={`Spend ${token1Symbol} to buy ${token0Symbol}`}
+          >
             ⓘ
           </span>
         </label>
@@ -466,7 +470,8 @@ export function FillOrderForm({
 
       {isConnected && !hasLiquidity && !isCheckingLiquidity && (
         <div style={styles.warningMessage}>
-          <span>💧</span> No sell orders available. Be the first to create a sell order!
+          <span>💧</span> No sell orders available. Be the first to create a
+          sell order!
         </div>
       )}
     </div>
