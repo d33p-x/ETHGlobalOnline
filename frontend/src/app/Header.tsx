@@ -46,7 +46,7 @@ export function Header() {
   return (
     <header className="header-container">
       <Link href="/" className="header-link">
-        <h1 className="header-title">P2P Exchange</h1>
+        <h1 className="header-title">p33rX</h1>
       </Link>
 
       {/* 3. Add new link */}

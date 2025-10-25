@@ -47,8 +47,8 @@ const NETWORK_CONFIGS: Record<number, NetworkConfig> = {
   },
   // Base Sepolia (update P2P address after deployment!)
   [baseSepolia.id]: {
-    p2pAddress: "0x2a942237037394852f34cBA4Fcec3dF00Ff0aa6A", // TODO: Update after deploy-sepolia.sh
-    deploymentBlock: 30000000n, // Approximate deployment block
+    p2pAddress: "0x2a942237037394852f34cBA4Fcec3dF00Ff0aa6A",
+    deploymentBlock: 32804371n, // Contract deployment block
     tokens: {
       // Real Base Sepolia tokens (DO NOT CHANGE)
       WETH: "0x4200000000000000000000000000000000000006",
@@ -90,104 +90,13 @@ export function getTokenAddresses(chainId: number) {
 
 /**
  * Get deployment block for the current chain
- * Returns the configured deployment block or undefined if not set
  */
-export function getDeploymentBlock(chainId: number): bigint | undefined {
+export function getDeploymentBlock(chainId: number): bigint {
   const config = NETWORK_CONFIGS[chainId];
   if (!config) {
     throw new Error(`No configuration found for chain ID ${chainId}`);
   }
-  return config.deploymentBlock;
-}
-
-/**
- * Automatically fetch the deployment block by finding the first event from the P2P contract
- * This is useful when the deployment block is not configured
- *
- * @param client - Viem public client
- * @param chainId - Chain ID
- * @returns The block number of the first contract event, or a fallback value
- */
-export async function fetchDeploymentBlock(
-  client: any,
-  chainId: number
-): Promise<bigint> {
-  const configuredBlock = getDeploymentBlock(chainId);
-
-  // If we have a configured block, use it
-  if (configuredBlock !== undefined) {
-    return configuredBlock;
-  }
-
-  // Otherwise, try to find the first event from the contract
-  try {
-    const p2pAddress = getP2PAddress(chainId);
-    const latestBlock = await client.getBlockNumber();
-
-    // Simple approach: try fetching logs from increasingly larger ranges
-    // until we find the first event
-    const searchRanges = [
-      latestBlock - 10000n, // Last 10k blocks
-      latestBlock - 100000n, // Last 100k blocks
-      latestBlock - 1000000n, // Last 1M blocks
-      0n, // From genesis (fallback)
-    ];
-
-    for (const startBlock of searchRanges) {
-      if (startBlock < 0n) continue;
-
-      try {
-        // Try to fetch any event from the contract
-        const logs = await client.getLogs({
-          address: p2pAddress,
-          fromBlock: startBlock,
-          toBlock: latestBlock,
-        });
-
-        if (logs.length > 0) {
-          // Find the earliest block
-          const deploymentBlock = logs.reduce(
-            (earliest: bigint, log: any) =>
-              log.blockNumber < earliest ? log.blockNumber : earliest,
-            logs[0].blockNumber
-          );
-          console.log(`Auto-detected deployment block: ${deploymentBlock}`);
-          return deploymentBlock;
-        }
-      } catch (err) {
-        console.warn(`Failed to fetch logs from block ${startBlock}:`, err);
-        continue;
-      }
-    }
-
-    // If we still haven't found anything, return a reasonable default
-    console.warn("Could not auto-detect deployment block, using fallback");
-    return 0n;
-  } catch (err) {
-    console.error("Error fetching deployment block:", err);
-    return 0n; // Fallback to genesis
-  }
-}
-
-/**
- * Get the starting block for log queries
- * Uses configured deployment block if available, otherwise returns a safe default
- */
-export function getStartBlock(chainId: number, latestBlock?: bigint): bigint {
-  const deploymentBlock = getDeploymentBlock(chainId);
-
-  if (deploymentBlock !== undefined) {
-    return deploymentBlock;
-  }
-
-  // If no deployment block configured and we have latest block,
-  // use a reasonable lookback (e.g., last 100k blocks)
-  if (latestBlock !== undefined && latestBlock > 100000n) {
-    return latestBlock - 100000n;
-  }
-
-  // Fallback to 0
-  return 0n;
+  return config.deploymentBlock ?? 0n;
 }
 
 /**

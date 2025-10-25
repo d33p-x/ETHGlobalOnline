@@ -1,7 +1,6 @@
 // src/app/page.tsx
 "use client";
 
-import { CreateMarketForm } from "./CreateMarketForm";
 import { MarketList } from "./MarketList";
 import { Debug } from "./Debug";
 import { SupportedTokens } from "./SupportedTokens";
@@ -12,7 +11,7 @@ function App() {
       {/* Hero Section */}
       <div style={styles.heroSection}>
         <h1 style={styles.heroTitle}>
-          <span style={styles.gradient}>P2P DEX</span>
+          <span style={styles.gradient}>p33rX</span>
         </h1>
         <p style={styles.heroSubtitle}>
           Decentralized peer-to-peer trading with Pyth oracle integration
@@ -21,7 +20,9 @@ function App() {
           <div style={styles.featureCard}>
             <div style={styles.featureIcon}>📊</div>
             <h4 style={styles.featureTitle}>Order Book Trading</h4>
-            <p style={styles.featureText}>Place limit orders with custom price ranges</p>
+            <p style={styles.featureText}>
+              Place limit orders with custom price ranges
+            </p>
           </div>
           <div style={styles.featureCard}>
             <div style={styles.featureIcon}>⚡</div>
@@ -31,12 +32,16 @@ function App() {
           <div style={styles.featureCard}>
             <div style={styles.featureIcon}>🎯</div>
             <h4 style={styles.featureTitle}>Zero Slippage</h4>
-            <p style={styles.featureText}>Execute trades at exact oracle prices</p>
+            <p style={styles.featureText}>
+              Execute trades at exact oracle prices
+            </p>
           </div>
           <div style={styles.featureCard}>
             <div style={styles.featureIcon}>💰</div>
             <h4 style={styles.featureTitle}>Fair Fees</h4>
-            <p style={styles.featureText}>Sellers earn 0.05% • Buyers pay 0.1%</p>
+            <p style={styles.featureText}>
+              Sellers earn 0.05% • Buyers pay 0.1%
+            </p>
           </div>
         </div>
       </div>
@@ -49,14 +54,9 @@ function App() {
         <MarketList />
       </div>
 
-      {/* Bottom Grid */}
-      <div style={styles.bottomGrid}>
-        <div style={styles.gridItem}>
-          <CreateMarketForm />
-        </div>
-        <div style={styles.gridItem}>
-          <SupportedTokens />
-        </div>
+      {/* Supported Tokens */}
+      <div style={styles.section}>
+        <SupportedTokens />
       </div>
     </div>
   );
@@ -67,7 +67,8 @@ const styles = {
     textAlign: "center" as const,
     marginBottom: "3rem",
     padding: "3rem 1rem",
-    background: "linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)",
+    background:
+      "linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)",
     borderRadius: "1rem",
     border: "1px solid rgba(59, 130, 246, 0.2)",
   },

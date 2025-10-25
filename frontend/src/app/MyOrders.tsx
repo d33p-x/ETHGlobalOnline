@@ -11,7 +11,7 @@ import {
 } from "wagmi";
 import { type Address, type Log, formatUnits, BaseError } from "viem";
 import { getTokenInfoMap } from "./tokenConfig";
-import { getP2PAddress, getStartBlock } from "./config";
+import { getP2PAddress, getDeploymentBlock } from "./config";
 
 // --- Config ---
 
@@ -148,7 +148,7 @@ export function MyOrders() {
     try {
       // Get current block and deployment block from config
       const latestBlock = await client.getBlockNumber();
-      const fromBlock = getStartBlock(chainId, latestBlock);
+      const fromBlock = getDeploymentBlock(chainId);
 
       // 1. Fetch all orders CREATED by user
       const createdLogs = await client.getLogs({

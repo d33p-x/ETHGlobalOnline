@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { usePublicClient, useWatchContractEvent, useChainId } from "wagmi";
 import { type Address, formatUnits } from "viem";
-import { getP2PAddress, getStartBlock } from "./config";
+import { getP2PAddress, getDeploymentBlock } from "./config";
 
 // --- Config ---
 // Ensure this is correct!
@@ -144,7 +144,7 @@ export function OrderList({ marketId }: { marketId: string }) {
         console.log(`Latest block: ${latestBlock}`);
 
         // Get deployment block from config
-        const fromBlock = getStartBlock(chainId, latestBlock);
+        const fromBlock = getDeploymentBlock(chainId);
 
         console.log(`Fetching logs from block ${fromBlock} to ${latestBlock}`);
 
@@ -187,7 +187,19 @@ export function OrderList({ marketId }: { marketId: string }) {
         // --- Process logs to build current order state ---
         const initialOrders: OrderMap = new Map();
 
-        // Process creations first - fetch decimals for each unique token
+        // First, collect all unique token addresses
+        const uniqueTokens = new Set<Address>();
+        for (const log of createdLogs) {
+          if (log.args.token0) uniqueTokens.add(log.args.token0);
+          if (log.args.token1) uniqueTokens.add(log.args.token1);
+        }
+
+        // Fetch decimals for all unique tokens in parallel
+        await Promise.all(
+          Array.from(uniqueTokens).map((token) => getTokenDecimals(token))
+        );
+
+        // Now process creations with cached decimals
         for (const log of createdLogs) {
           const {
             orderId,
@@ -207,7 +219,7 @@ export function OrderList({ marketId }: { marketId: string }) {
             maxPrice !== undefined &&
             minPrice !== undefined
           ) {
-            // Fetch decimals for both tokens
+            // Get decimals from cache (already fetched above)
             const decimals0 = await getTokenDecimals(token0);
             const decimals1 = await getTokenDecimals(token1);
 

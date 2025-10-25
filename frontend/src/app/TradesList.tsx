@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { usePublicClient, useWatchContractEvent, useChainId } from "wagmi";
 import { type Address, formatUnits } from "viem";
-import { getP2PAddress, getStartBlock } from "./config";
+import { getP2PAddress, getDeploymentBlock } from "./config";
 
 // --- Config ---
 
@@ -76,7 +76,7 @@ export function TradesList({ marketId }: { marketId: string }) {
         console.log(`Latest block: ${latestBlock}`);
 
         // Get deployment block from config
-        const fromBlock = getStartBlock(chainId, latestBlock);
+        const fromBlock = getDeploymentBlock(chainId);
 
         console.log(
           `Fetching trade logs from block ${fromBlock} to ${latestBlock}`

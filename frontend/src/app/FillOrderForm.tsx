@@ -19,7 +19,7 @@ import {
 } from "viem";
 import { erc20Abi } from "viem";
 import { getTokenInfoMap } from "@/app/tokenConfig";
-import { getP2PAddress, getStartBlock } from "./config";
+import { getP2PAddress, getDeploymentBlock } from "./config";
 
 const p2pAbi = [
   {
@@ -176,7 +176,7 @@ export function FillOrderForm({
       try {
         // Get current block and deployment block from config
         const latestBlock = await client.getBlockNumber();
-        const fromBlock = getStartBlock(chainId, latestBlock);
+        const fromBlock = getDeploymentBlock(chainId);
 
         // Fetch all order events for this market
         const createdLogs = await client.getLogs({
