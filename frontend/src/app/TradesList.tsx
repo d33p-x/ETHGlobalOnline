@@ -249,7 +249,7 @@ export function TradesList({ marketId }: { marketId: string }) {
       ) : trades.length === 0 ? (
         <p style={{ fontSize: "0.875rem" }}>No trades yet.</p>
       ) : (
-        <div style={{ overflow: "auto", flex: 1 }}>
+        <div style={{ overflow: "auto", flex: 1, maxHeight: "400px" }}>
           <table className="order-table">
             <thead>
               <tr>

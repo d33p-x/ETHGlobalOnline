@@ -167,6 +167,14 @@ export function CreateOrderForm({
         </div>
       </div>
 
+      {/* Maker Fee Info */}
+      <div style={styles.feeInfoBox}>
+        <span style={styles.feeIcon}>💰</span>
+        <div style={styles.feeText}>
+          <strong>Maker Rebate: +0.05%</strong> - Earn a fee rebate for providing liquidity
+        </div>
+      </div>
+
       {/* Minimum Order Info */}
       <div style={styles.warningBox}>
         <span style={styles.infoIcon}>ℹ️</span>
@@ -419,6 +427,8 @@ const styles = {
   maxButton: {
     position: "absolute" as const,
     right: "0.5rem",
+    top: "50%",
+    transform: "translateY(-50%)",
     padding: "0.5rem 1rem",
     background: "rgba(255, 0, 128, 0.2)",
     border: "1px solid #ff0080",
@@ -568,6 +578,26 @@ const styles = {
     background: "rgba(139, 92, 246, 0.05)",
     border: "1px solid rgba(139, 92, 246, 0.2)",
     borderRadius: "0.5rem",
+  },
+
+  feeInfoBox: {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.75rem",
+    padding: "0.875rem",
+    background: "rgba(16, 185, 129, 0.05)",
+    border: "1px solid rgba(16, 185, 129, 0.2)",
+    borderRadius: "0.5rem",
+  },
+
+  feeIcon: {
+    fontSize: "1.25rem",
+  },
+
+  feeText: {
+    fontSize: "0.8125rem",
+    color: "#10b981",
+    lineHeight: "1.4",
   },
 
   warningBox: {

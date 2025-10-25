@@ -44,6 +44,13 @@ export default function MarketPage({
   const [token0, setToken0] = useState<Address | undefined>();
   const [token1, setToken1] = useState<Address | undefined>();
   const [fetchingMarket, setFetchingMarket] = useState(true);
+  const [marketStats, setMarketStats] = useState({
+    price: "0.00",
+    priceChange24h: "0.00",
+    priceChangePercent24h: 0,
+    volume24h: "0.00",
+    liquidity: "0.00",
+  });
 
   // --- 3. Look up symbols from your tokenConfig (network-aware) ---
   const symbol0 = token0 ? tokenInfoMap[token0]?.symbol : undefined; // e.g., "WETH"
@@ -51,6 +58,11 @@ export default function MarketPage({
 
   const isWethMarket = symbol0 === "WETH" || symbol1 === "WETH";
   const wethAddress = symbol0 === "WETH" ? token0 : token1;
+
+  // --- 4. Prepare symbols for Pyth (before useEffect that uses them) ---
+  // Pyth uses "ETH", not "WETH". This maps it correctly.
+  const chartBaseSymbol = symbol0 === "WETH" ? "ETH" : symbol0;
+  const chartQuoteSymbol = symbol1 === "WETH" ? "ETH" : symbol1;
 
   // Fetch token addresses from contract using marketId
   useEffect(() => {
@@ -111,6 +123,120 @@ export default function MarketPage({
     fetchMarkets();
   }, [client, p2pAddress, chainId, tokenInfoMap]);
 
+  // Fetch market stats (price, volume, liquidity)
+  useEffect(() => {
+    const fetchMarketStats = async () => {
+      if (!client || !p2pAddress || !marketId || !token1) return;
+
+      try {
+        // Fetch market data from the contract
+        const marketData = await client.readContract({
+          address: p2pAddress,
+          abi: p2pAbi,
+          functionName: "markets",
+          args: [marketId as `0x${string}`],
+        });
+
+        const totalLiquidity = marketData[6]; // totalLiquidity is at index 6
+        const decimals0 = marketData[2]; // decimals0 is at index 2
+        const decimals1 = marketData[3]; // decimals1 is at index 3
+
+        // Format liquidity in token0 (WETH)
+        const liquidityFormatted = (Number(totalLiquidity) / 10 ** decimals0).toLocaleString(undefined, {
+          minimumFractionDigits: 4,
+          maximumFractionDigits: 4,
+        });
+
+        // Fetch 24h volume from OrderFilled events
+        const deploymentBlock = getDeploymentBlock(chainId);
+        const currentBlock = await client.getBlockNumber();
+
+        // Calculate blocks for ~24 hours (assuming ~12 second block time)
+        const blocksPerDay = Math.floor((24 * 60 * 60) / 12);
+        const fromBlock = currentBlock - BigInt(blocksPerDay);
+
+        const orderFilledLogs = await client.getLogs({
+          address: p2pAddress,
+          event: p2pAbi.find(e => e.type === "event" && e.name === "OrderFilled"),
+          args: {
+            marketId: marketId as `0x${string}`,
+          },
+          fromBlock: fromBlock > deploymentBlock ? fromBlock : deploymentBlock,
+          toBlock: "latest",
+        });
+
+        // Calculate 24h volume (sum of amount1Spent)
+        let volume24h = BigInt(0);
+        for (const log of orderFilledLogs) {
+          volume24h += log.args.amount1Spent || BigInt(0);
+        }
+
+        const volumeFormatted = (Number(volume24h) / 10 ** decimals1).toLocaleString(undefined, {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        });
+
+        // Fetch current oracle price from Pyth (same as chart)
+        // Map symbols for Pyth (WETH -> ETH)
+        const baseSymbolForPyth = chartBaseSymbol; // Already mapped: WETH -> ETH
+        const quoteSymbolForPyth = chartQuoteSymbol; // Already mapped
+
+        let oraclePrice = "0.00";
+        try {
+          const pythApiBaseUrl = "https://benchmarks.pyth.network/v1/shims/tradingview";
+          const now = Math.floor(Date.now() / 1000);
+          const oneHourAgo = now - 3600;
+
+          const basePythSymbol = `Crypto.${baseSymbolForPyth}/USD`;
+          const quotePythSymbol = `Crypto.${quoteSymbolForPyth}/USD`;
+
+          const [baseRes, quoteRes] = await Promise.all([
+            fetch(`${pythApiBaseUrl}/history?symbol=${basePythSymbol}&resolution=60&from=${oneHourAgo}&to=${now}`),
+            fetch(`${pythApiBaseUrl}/history?symbol=${quotePythSymbol}&resolution=60&from=${oneHourAgo}&to=${now}`)
+          ]);
+
+          if (baseRes.ok && quoteRes.ok) {
+            const baseData = await baseRes.json();
+            const quoteData = await quoteRes.json();
+
+            if (baseData.s === "ok" && quoteData.s === "ok" && baseData.c && quoteData.c &&
+                baseData.c.length > 0 && quoteData.c.length > 0) {
+              // Get latest close prices
+              const basePrice = baseData.c[baseData.c.length - 1];
+              const quotePrice = quoteData.c[quoteData.c.length - 1];
+
+              if (quotePrice !== 0) {
+                const calculatedPrice = basePrice / quotePrice;
+                oraclePrice = calculatedPrice.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                });
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching oracle price:", error);
+        }
+
+        setMarketStats({
+          price: oraclePrice,
+          priceChange24h: "0.00", // TODO: Calculate from historical data
+          priceChangePercent24h: 0, // TODO: Calculate from historical data
+          volume24h: volumeFormatted,
+          liquidity: liquidityFormatted,
+        });
+      } catch (error) {
+        console.error("Error fetching market stats:", error);
+      }
+    };
+
+    fetchMarketStats();
+
+    // Refresh stats every 30 seconds
+    const interval = setInterval(fetchMarketStats, 30000);
+    return () => clearInterval(interval);
+  }, [client, p2pAddress, marketId, chainId, token1, chartBaseSymbol, chartQuoteSymbol]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = () => {
@@ -140,53 +266,70 @@ export default function MarketPage({
     );
   }
 
-  // --- 4. Prepare symbols for Pyth ---
-  // Pyth uses "ETH", not "WETH". This maps it correctly.
-  const chartBaseSymbol = symbol0 === "WETH" ? "ETH" : symbol0;
-  const chartQuoteSymbol = symbol1 === "WETH" ? "ETH" : symbol1;
-
   return (
     <div className="market-page-container">
-      {/* Header Section */}
-      <div className="market-header">
-        <div className="market-header-top">
-          <div className="market-header-left">
-            <h1 className="market-title">
-              {symbol0} / {symbol1}
-            </h1>
-
-            {/* Market Selector Dropdown */}
-            <div style={{ position: "relative" }}>
+      {/* Professional Market Header */}
+      <div
+        style={{
+          background: "rgba(26, 34, 65, 0.6)",
+          border: "1px solid rgba(59, 130, 246, 0.2)",
+          borderRadius: "0.75rem",
+          padding: "0.875rem 1.25rem",
+          marginBottom: "0.5rem",
+          backdropFilter: "blur(10px)",
+          position: "relative",
+          zIndex: 100,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "2rem",
+            flexWrap: "wrap",
+          }}
+        >
+          {/* Left Side - Market Info */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "1.5rem",
+              flex: 1,
+            }}
+          >
+            {/* Market Pair with Dropdown */}
+            <div style={{ position: "relative", display: "flex", alignItems: "center", gap: "0.375rem" }}>
+              <h1
+                style={{
+                  fontSize: "1rem",
+                  fontWeight: "700",
+                  color: "#f1f5f9",
+                  margin: 0,
+                  letterSpacing: "0.02em",
+                }}
+              >
+                {symbol0}/{symbol1}
+              </h1>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   setIsDropdownOpen(!isDropdownOpen);
                 }}
                 style={{
-                  background: "rgba(0, 245, 255, 0.1)",
-                  border: "1px solid rgba(0, 245, 255, 0.3)",
-                  borderRadius: "0.5rem",
-                  padding: "0.5rem 0.75rem",
+                  background: "transparent",
+                  border: "none",
                   cursor: "pointer",
-                  color: "#00f5ff",
-                  fontSize: "0.875rem",
-                  fontWeight: "600",
+                  color: "#94a3b8",
+                  fontSize: "0.625rem",
+                  padding: "0.25rem",
                   display: "flex",
                   alignItems: "center",
-                  gap: "0.5rem",
-                  transition: "all 0.2s ease",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "rgba(0, 245, 255, 0.2)";
-                  e.currentTarget.style.boxShadow = "0 0 20px rgba(0, 245, 255, 0.3)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "rgba(0, 245, 255, 0.1)";
-                  e.currentTarget.style.boxShadow = "none";
+                  boxShadow: "none",
                 }}
               >
-                <span>Switch Market</span>
-                <span style={{ fontSize: "0.75rem" }}>▼</span>
+                ▼
               </button>
 
               {/* Dropdown Menu */}
@@ -196,15 +339,15 @@ export default function MarketPage({
                     position: "absolute",
                     top: "calc(100% + 0.5rem)",
                     left: 0,
-                    background: "rgba(15, 23, 42, 0.98)",
-                    border: "1px solid rgba(59, 130, 246, 0.3)",
+                    background: "var(--bg-tertiary)",
+                    border: "1px solid var(--border-color)",
                     borderRadius: "0.5rem",
                     padding: "0.5rem",
-                    minWidth: "200px",
-                    maxHeight: "400px",
+                    minWidth: "160px",
+                    maxHeight: "300px",
                     overflowY: "auto",
-                    zIndex: 9999,
-                    boxShadow: "0 10px 40px rgba(0, 0, 0, 0.5)",
+                    zIndex: 10000,
+                    boxShadow: "var(--shadow-lg)",
                   }}
                 >
                   {availableMarkets.map((market) => {
@@ -221,23 +364,22 @@ export default function MarketPage({
                         disabled={isCurrentMarket}
                         style={{
                           width: "100%",
-                          padding: "0.75rem",
-                          background: isCurrentMarket
-                            ? "rgba(59, 130, 246, 0.2)"
-                            : "transparent",
+                          padding: "0.5rem",
+                          background: isCurrentMarket ? "rgba(59, 130, 246, 0.15)" : "transparent",
                           border: "none",
                           borderRadius: "0.375rem",
-                          color: isCurrentMarket ? "#60a5fa" : "#cbd5e1",
-                          fontSize: "0.875rem",
+                          color: isCurrentMarket ? "var(--accent-secondary)" : "var(--text-secondary)",
+                          fontSize: "0.8125rem",
                           fontWeight: "500",
                           cursor: isCurrentMarket ? "default" : "pointer",
                           textAlign: "left",
-                          transition: "all 0.2s ease",
+                          transition: "all 0.15s ease",
                           marginBottom: "0.25rem",
+                          boxShadow: "none",
                         }}
                         onMouseEnter={(e) => {
                           if (!isCurrentMarket) {
-                            e.currentTarget.style.background = "rgba(59, 130, 246, 0.15)";
+                            e.currentTarget.style.background = "rgba(59, 130, 246, 0.1)";
                           }
                         }}
                         onMouseLeave={(e) => {
@@ -246,10 +388,7 @@ export default function MarketPage({
                           }
                         }}
                       >
-                        {market.symbol0} / {market.symbol1}
-                        {isCurrentMarket && (
-                          <span style={{ marginLeft: "0.5rem", color: "#10b981" }}>✓</span>
-                        )}
+                        {market.symbol0}/{market.symbol1}
                       </button>
                     );
                   })}
@@ -257,89 +396,52 @@ export default function MarketPage({
               )}
             </div>
 
-            <span
-              style={{
-                padding: "0.375rem 0.875rem",
-                background: "rgba(16, 185, 129, 0.15)",
-                color: "#10b981",
-                borderRadius: "0.5rem",
-                border: "1px solid rgba(16, 185, 129, 0.3)",
-                fontSize: "0.8125rem",
-                fontWeight: "600",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                whiteSpace: "nowrap",
-              }}
-            >
-              <span style={{ fontSize: "1rem" }}>🎯</span>
-              Zero Slippage
-            </span>
+            {/* Divider */}
+            <div style={{ width: "1px", height: "1.5rem", background: "var(--border-color)" }} />
+
+            {/* Price */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.125rem" }}>
+              <span style={{ color: "var(--text-muted)", fontSize: "0.6875rem", fontWeight: "500" }}>
+                Price
+              </span>
+              <div
+                style={{
+                  fontSize: "1rem",
+                  fontWeight: "700",
+                  color: marketStats.priceChangePercent24h >= 0 ? "var(--success)" : "var(--error)",
+                  lineHeight: 1,
+                }}
+              >
+                ${marketStats.price}
+              </div>
+            </div>
+
+            {/* 24h Volume */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.125rem" }}>
+              <span style={{ color: "var(--text-muted)", fontSize: "0.6875rem", fontWeight: "500" }}>
+                24h Volume ({symbol1})
+              </span>
+              <span style={{ color: "var(--text-primary)", fontSize: "0.875rem", fontWeight: "600" }}>
+                {marketStats.volume24h}
+              </span>
+            </div>
+
+            {/* Liquidity */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.125rem" }}>
+              <span style={{ color: "var(--text-muted)", fontSize: "0.6875rem", fontWeight: "500" }}>
+                Liquidity ({symbol0})
+              </span>
+              <span style={{ color: "var(--text-primary)", fontSize: "0.875rem", fontWeight: "600" }}>
+                {marketStats.liquidity}
+              </span>
+            </div>
           </div>
 
-          {isWethMarket && wethAddress && (
-            <WrapUnwrapButton wethAddress={wethAddress} />
-          )}
-        </div>
-
-        {/* Fee Info Row */}
-        <div
-          style={{
-            display: "flex",
-            gap: "1.5rem",
-            alignItems: "center",
-            flexWrap: "wrap",
-          }}
-        >
-          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-            <span style={{ color: "#94a3b8", fontSize: "0.8125rem" }}>Maker:</span>
-            <span
-              style={{
-                color: "#10b981",
-                fontWeight: "700",
-                fontSize: "0.875rem",
-              }}
-            >
-              +0.05%
-            </span>
-          </div>
-          <div
-            style={{
-              width: "1px",
-              height: "1rem",
-              background: "rgba(148, 163, 184, 0.2)",
-            }}
-          />
-          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-            <span style={{ color: "#94a3b8", fontSize: "0.8125rem" }}>Taker:</span>
-            <span
-              style={{
-                color: "#60a5fa",
-                fontWeight: "700",
-                fontSize: "0.875rem",
-              }}
-            >
-              0.10%
-            </span>
-          </div>
-          <div
-            style={{
-              width: "1px",
-              height: "1rem",
-              background: "rgba(148, 163, 184, 0.2)",
-            }}
-          />
-          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-            <span style={{ color: "#94a3b8", fontSize: "0.8125rem" }}>Spread:</span>
-            <span
-              style={{
-                color: "#cbd5e1",
-                fontWeight: "700",
-                fontSize: "0.875rem",
-              }}
-            >
-              0.05%
-            </span>
+          {/* Right Side - Actions */}
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+            {isWethMarket && wethAddress && (
+              <WrapUnwrapButton wethAddress={wethAddress} />
+            )}
           </div>
         </div>
       </div>
@@ -349,7 +451,7 @@ export default function MarketPage({
         style={{
           display: "flex",
           flexDirection: "column",
-          gap: "1rem",
+          gap: "0.5rem",
           flex: 1,
           minHeight: 0,
         }}

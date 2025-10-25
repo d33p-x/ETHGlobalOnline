@@ -190,6 +190,14 @@ export function FillOrderForm({
         </div>
       </div>
 
+      {/* Taker Fee Info */}
+      <div style={styles.feeInfoBox}>
+        <span style={styles.feeIcon}>💳</span>
+        <div style={styles.feeText}>
+          <strong>Taker Fee: 0.10%</strong> - Fee for taking liquidity from the order book
+        </div>
+      </div>
+
       {/* Amount Input */}
       <div style={styles.inputGroup}>
         <label style={styles.label}>
@@ -425,6 +433,8 @@ const styles = {
   maxButton: {
     position: "absolute" as const,
     right: "0.5rem",
+    top: "50%",
+    transform: "translateY(-50%)",
     padding: "0.5rem 1rem",
     background: "rgba(0, 245, 255, 0.2)",
     border: "1px solid #00f5ff",
@@ -452,6 +462,26 @@ const styles = {
     fontWeight: "600",
     cursor: "pointer",
     transition: "all 0.2s ease",
+  },
+
+  feeInfoBox: {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.75rem",
+    padding: "0.875rem",
+    background: "rgba(59, 130, 246, 0.05)",
+    border: "1px solid rgba(59, 130, 246, 0.2)",
+    borderRadius: "0.5rem",
+  },
+
+  feeIcon: {
+    fontSize: "1.25rem",
+  },
+
+  feeText: {
+    fontSize: "0.8125rem",
+    color: "#60a5fa",
+    lineHeight: "1.4",
   },
 
   infoBox: {

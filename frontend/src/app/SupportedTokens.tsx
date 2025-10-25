@@ -63,12 +63,11 @@ function TokenRow({
   return (
     <li style={tokenRowStyles.tokenRow}>
       <div style={tokenRowStyles.tokenInfo}>
-        <div style={tokenRowStyles.tokenSymbol}>
-          <strong>{tokenInfo.symbol}</strong>
-          <span style={tokenRowStyles.tokenDecimals}>
-            ({tokenInfo.decimals} decimals)
-          </span>
-        </div>
+        <strong style={tokenRowStyles.tokenSymbol}>{tokenInfo.symbol}</strong>
+        <span style={tokenRowStyles.tokenDecimals}>
+          ({tokenInfo.decimals} decimals)
+        </span>
+        <span style={tokenRowStyles.separator}>•</span>
         <span style={tokenRowStyles.tokenAddress}>{address}</span>
       </div>
       {isMockToken && (
@@ -114,7 +113,7 @@ const tokenRowStyles = {
     alignItems: "center",
     justifyContent: "space-between",
     gap: "1rem",
-    padding: "1rem 1.25rem",
+    padding: "0.625rem 1rem",
     background: "rgba(26, 34, 65, 0.6)",
     border: "1px solid rgba(59, 130, 246, 0.15)",
     borderRadius: "0.5rem",
@@ -122,30 +121,32 @@ const tokenRowStyles = {
   },
   tokenInfo: {
     display: "flex",
-    flexDirection: "column" as const,
-    gap: "0.25rem",
+    alignItems: "center",
+    gap: "0.5rem",
     flex: 1,
   },
   tokenSymbol: {
-    display: "flex",
-    alignItems: "center",
-    gap: "0.5rem",
-    fontSize: "1rem",
+    fontSize: "0.875rem",
     color: "#f1f5f9",
+    minWidth: "60px",
   },
   tokenDecimals: {
-    fontSize: "0.875rem",
+    fontSize: "0.75rem",
     color: "#94a3b8",
     fontWeight: "normal" as const,
   },
+  separator: {
+    fontSize: "0.75rem",
+    color: "#64748b",
+  },
   tokenAddress: {
-    fontSize: "0.8125rem",
+    fontSize: "0.75rem",
     color: "#64748b",
     fontFamily: "monospace",
   },
   mintButton: {
-    padding: "0.5rem 1rem",
-    fontSize: "0.875rem",
+    padding: "0.375rem 0.875rem",
+    fontSize: "0.8125rem",
     fontWeight: "600",
     background: "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)",
     color: "white",
@@ -282,6 +283,6 @@ const styles = {
     margin: 0,
     display: "flex",
     flexDirection: "column" as const,
-    gap: "0.75rem",
+    gap: "0.5rem",
   },
 };

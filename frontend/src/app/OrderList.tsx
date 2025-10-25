@@ -53,7 +53,7 @@ export function OrderList({ marketId }: { marketId: string }) {
       ) : orderArray.length === 0 ? (
         <p style={{ fontSize: "0.875rem" }}>No active orders.</p>
       ) : (
-        <div style={{ overflow: "auto", flex: 1 }}>
+        <div style={{ overflow: "auto", flex: 1, maxHeight: "400px" }}>
           <table className="order-table">
             <thead>
               <tr>
