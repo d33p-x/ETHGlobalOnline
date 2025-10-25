@@ -16,7 +16,7 @@ import { WrapUnwrapButton } from "@/app/WrapUnwrap";
 // Import your existing components
 import { TradingInterface } from "@/app/TradingInterface";
 import { MarketDataTabs } from "@/app/MarketDataTabs";
-import { MyOrders } from "@/app/MyOrders";
+import { MyMarketOrders } from "@/app/MyMarketOrders";
 import { MyTrades } from "@/app/MyTrades";
 
 type AvailableMarket = {
@@ -645,7 +645,7 @@ export default function MarketPage({
             >
               My Orders
             </div>
-            <MyOrders marketId={marketId} />
+            <MyMarketOrders marketId={marketId} />
           </div>
 
           {/* My Trades */}
