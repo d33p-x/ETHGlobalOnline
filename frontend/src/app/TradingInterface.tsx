@@ -68,6 +68,9 @@ const styles = {
     border: "1px solid var(--border-color)",
     overflow: "hidden",
     boxShadow: "var(--shadow-lg)",
+    minHeight: "600px",
+    display: "flex",
+    flexDirection: "column" as const,
   } as React.CSSProperties,
 
   tabHeader: {

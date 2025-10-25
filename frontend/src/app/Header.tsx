@@ -52,11 +52,37 @@ export function Header() {
       </Link>
 
       <div style={styles.navLinks}>
-        <Link href="/markets" style={styles.navLink}>
+        <Link
+          href="/markets"
+          style={styles.navLink}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "rgba(0, 245, 255, 0.1)";
+            e.currentTarget.style.borderColor = "rgba(0, 245, 255, 0.3)";
+            e.currentTarget.style.color = "#00f5ff";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.borderColor = "transparent";
+            e.currentTarget.style.color = "#94a3b8";
+          }}
+        >
           Markets
         </Link>
         {isConnected && (
-          <Link href="/my-orders" style={styles.navLink}>
+          <Link
+            href="/my-orders"
+            style={styles.navLink}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(0, 245, 255, 0.1)";
+              e.currentTarget.style.borderColor = "rgba(0, 245, 255, 0.3)";
+              e.currentTarget.style.color = "#00f5ff";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.borderColor = "transparent";
+              e.currentTarget.style.color = "#94a3b8";
+            }}
+          >
             My Orders
           </Link>
         )}
@@ -75,56 +101,59 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: "1.25rem 2rem",
-    background: "rgba(20, 27, 58, 0.8)",
+    padding: "1rem 2.5rem",
+    background: "linear-gradient(to right, rgba(15, 23, 42, 0.95), rgba(26, 34, 65, 0.95))",
     backdropFilter: "blur(20px)",
-    borderBottom: "1px solid rgba(59, 130, 246, 0.2)",
+    borderBottom: "1px solid rgba(0, 245, 255, 0.15)",
     position: "sticky" as const,
     top: 0,
     zIndex: 100,
-    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+    boxShadow: "0 4px 30px rgba(0, 0, 0, 0.3), 0 0 40px rgba(0, 245, 255, 0.05)",
   },
   logoLink: {
     textDecoration: "none",
-    transition: "transform 0.2s ease",
+    transition: "all 0.3s ease",
   },
   logo: {
     margin: 0,
-    fontSize: "1.75rem",
-    fontWeight: "800",
-    letterSpacing: "-0.02em",
+    fontSize: "2rem",
+    fontWeight: "900",
+    letterSpacing: "-0.03em",
+    position: "relative" as const,
+    display: "inline-block",
   },
   logoGradient: {
-    background:
-      "linear-gradient(135deg, #00f5ff 0%, #a855f7 50%, #ff0080 100%)",
+    background: "linear-gradient(135deg, #00f5ff 0%, #60a5fa 50%, #a855f7 100%)",
     WebkitBackgroundClip: "text",
     WebkitTextFillColor: "transparent",
     backgroundClip: "text",
+    filter: "drop-shadow(0 0 20px rgba(0, 245, 255, 0.3))",
   },
   navLinks: {
     display: "flex",
     alignItems: "center",
-    gap: "0.75rem",
-    marginLeft: "1rem",
+    gap: "0.5rem",
+    marginLeft: "3rem",
+    flex: 1,
   },
   navLink: {
     display: "flex",
     alignItems: "center",
     gap: "0.5rem",
-    padding: "0.625rem 1.25rem",
-    background: "rgba(59, 130, 246, 0.1)",
-    border: "1px solid rgba(59, 130, 246, 0.3)",
+    padding: "0.625rem 1.5rem",
+    background: "transparent",
+    border: "1px solid transparent",
     borderRadius: "0.5rem",
-    color: "#60a5fa",
+    color: "#94a3b8",
     textDecoration: "none",
     fontSize: "0.9375rem",
     fontWeight: "600",
-    transition: "all 0.2s ease",
+    transition: "all 0.3s ease",
+    position: "relative" as const,
   },
   rightSection: {
     display: "flex",
     alignItems: "center",
     gap: "1rem",
-    marginLeft: "auto",
   },
 };

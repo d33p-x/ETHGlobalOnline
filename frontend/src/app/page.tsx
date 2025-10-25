@@ -12,7 +12,12 @@ function App() {
       <div style={styles.heroSection}>
         <div style={styles.heroContent}>
           <div style={styles.badge}>
-            <span style={styles.badgeText}>Powered by Pyth Network</span>
+            <span style={styles.poweredByText}>Powered by</span>
+            <img
+              src="/Pyth_Logotype_Dark.svg"
+              alt="Pyth Network"
+              style={styles.pythLogo}
+            />
           </div>
           <h1 style={styles.heroTitle}>
             <span style={styles.gradient}>p33rX</span>
@@ -156,7 +161,8 @@ const styles = {
     zIndex: 1,
   },
   badge: {
-    display: "inline-block",
+    display: "inline-flex",
+    alignItems: "center",
     padding: "0.5rem 1.25rem",
     background:
       "linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%)",
@@ -170,6 +176,18 @@ const styles = {
     fontWeight: "600",
     color: "#60a5fa",
     letterSpacing: "0.05em",
+  },
+  poweredByText: {
+    fontSize: "0.875rem",
+    fontWeight: "600",
+    color: "#94a3b8",
+    marginRight: "0.5rem",
+  },
+  pythLogo: {
+    height: "24px",
+    width: "auto",
+    display: "block",
+    filter: "brightness(0) invert(1)",
   },
   heroTitle: {
     fontSize: "4rem",

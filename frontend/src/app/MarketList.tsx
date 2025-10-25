@@ -451,7 +451,7 @@ export function MarketList() {
               return (
                 <Link
                   key={market.marketId}
-                  href={`/market/${market.marketId}?token0=${market.token0}&token1=${market.token1}`}
+                  href={`/market/${market.marketId}`}
                   style={{ textDecoration: "none" }}
                 >
                   <div
