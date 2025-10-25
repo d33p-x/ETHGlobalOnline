@@ -173,46 +173,12 @@ export default function MarketPage({
   const chartQuoteSymbol = symbol1 === "WETH" ? "ETH" : symbol1;
 
   return (
-    <div
-      style={{
-        padding: "1.5rem",
-        minHeight: "calc(100vh - 80px)",
-        display: "flex",
-        flexDirection: "column",
-        gap: "1rem",
-      }}
-    >
+    <div className="market-page-container">
       {/* Header Section */}
-      <div
-        style={{
-          background: "rgba(26, 34, 65, 0.6)",
-          border: "1px solid rgba(59, 130, 246, 0.2)",
-          borderRadius: "0.75rem",
-          padding: "1.25rem 1.5rem",
-          marginBottom: "1rem",
-          backdropFilter: "blur(10px)",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: "1rem",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-            <h1
-              style={{
-                margin: 0,
-                fontSize: "2rem",
-                fontWeight: "700",
-                background: "linear-gradient(135deg, #00f5ff 0%, #60a5fa 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
-              }}
-            >
+      <div className="market-header">
+        <div className="market-header-top">
+          <div className="market-header-left">
+            <h1 className="market-title">
               {symbol0} / {symbol1}
             </h1>
 
@@ -264,7 +230,7 @@ export default function MarketPage({
                     minWidth: "200px",
                     maxHeight: "400px",
                     overflowY: "auto",
-                    zIndex: 1000,
+                    zIndex: 9999,
                     boxShadow: "0 10px 40px rgba(0, 0, 0, 0.5)",
                   }}
                 >
@@ -327,9 +293,10 @@ export default function MarketPage({
                 border: "1px solid rgba(16, 185, 129, 0.3)",
                 fontSize: "0.8125rem",
                 fontWeight: "600",
-                display: "flex",
+                display: "inline-flex",
                 alignItems: "center",
                 gap: "0.5rem",
+                whiteSpace: "nowrap",
               }}
             >
               <span style={{ fontSize: "1rem" }}>🎯</span>
@@ -348,6 +315,7 @@ export default function MarketPage({
             display: "flex",
             gap: "1.5rem",
             alignItems: "center",
+            flexWrap: "wrap",
           }}
         >
           <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
@@ -414,18 +382,12 @@ export default function MarketPage({
         }}
       >
         {/* Top Row: Chart (66%) | Forms (33%) */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "2fr 1fr",
-            gap: "1rem",
-            alignItems: "stretch",
-          }}
-        >
+        <div className="market-chart-grid">
           {/* Chart - 66% width */}
           <div
             style={{
               minWidth: 0,
+              minHeight: "400px",
               display: "flex",
               flexDirection: "column",
               borderRadius: "0.75rem",
@@ -444,7 +406,7 @@ export default function MarketPage({
           {/* Trading Interface - 33% width */}
           <div
             style={{
-              minWidth: 320,
+              minWidth: 0,
               display: "flex",
               flexDirection: "column",
             }}
@@ -458,15 +420,7 @@ export default function MarketPage({
         </div>
 
         {/* Bottom Row: OrderBook (50%) | Trades (50%) */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "1rem",
-            height: "40%",
-            minHeight: 0,
-          }}
-        >
+        <div className="market-orderbook-grid">
           {/* OrderBook - left half */}
           <div
             style={{

@@ -54,14 +54,14 @@ export function Header() {
   const { isConnected } = useAccount();
 
   return (
-    <header style={styles.header}>
+    <header className="site-header">
       <Link href="/" style={styles.logoLink}>
         <h1 style={styles.logo}>
           <span style={styles.logoGradient}>p33rX</span>
         </h1>
       </Link>
 
-      <div style={styles.navLinks}>
+      <div className="site-header-nav">
         <Link
           href="/markets"
           style={styles.navLink}
@@ -98,7 +98,7 @@ export function Header() {
         )}
       </div>
 
-      <div style={styles.rightSection}>
+      <div className="site-header-right">
         <NetworkSelector />
         <WalletConnect />
       </div>
@@ -107,19 +107,6 @@ export function Header() {
 }
 
 const styles = {
-  header: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "1rem 2.5rem",
-    background: "linear-gradient(to right, rgba(15, 23, 42, 0.95), rgba(26, 34, 65, 0.95))",
-    backdropFilter: "blur(20px)",
-    borderBottom: "1px solid rgba(0, 245, 255, 0.15)",
-    position: "sticky" as const,
-    top: 0,
-    zIndex: 100,
-    boxShadow: "0 4px 30px rgba(0, 0, 0, 0.3), 0 0 40px rgba(0, 245, 255, 0.05)",
-  },
   logoLink: {
     textDecoration: "none",
     transition: "all 0.3s ease",
@@ -139,13 +126,6 @@ const styles = {
     backgroundClip: "text",
     filter: "drop-shadow(0 0 20px rgba(0, 245, 255, 0.3))",
   },
-  navLinks: {
-    display: "flex",
-    alignItems: "center",
-    gap: "0.5rem",
-    marginLeft: "3rem",
-    flex: 1,
-  },
   navLink: {
     display: "flex",
     alignItems: "center",
@@ -160,10 +140,5 @@ const styles = {
     fontWeight: "600",
     transition: "all 0.3s ease",
     position: "relative" as const,
-  },
-  rightSection: {
-    display: "flex",
-    alignItems: "center",
-    gap: "1rem",
   },
 };

@@ -371,6 +371,16 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
 
   return (
     <div style={{ width: "100%", height: "100%", position: "relative" }}>
+      {/* Pyth Logo Overlay */}
+      <div style={styles.logoContainer}>
+        <span style={styles.poweredByText}>Powered by</span>
+        <img
+          src="/Pyth_Logotype_Dark.svg"
+          alt="Pyth Network"
+          style={styles.pythLogo}
+        />
+      </div>
+
       {/* Interval Controls */}
       <div style={styles.controlsContainer}>
         {INTERVALS.map((intervalOption) => (
@@ -401,6 +411,31 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
 
 // Simple overlay styles
 const styles = {
+  logoContainer: {
+    position: "absolute",
+    top: "10px",
+    left: "10px",
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    zIndex: 20,
+    backgroundColor: "rgba(30, 40, 73, 0.95)", // Match site's bg-card with opacity
+    padding: "8px 12px",
+    borderRadius: "6px",
+    border: "1px solid rgba(59, 130, 246, 0.2)",
+    backdropFilter: "blur(10px)",
+  } as React.CSSProperties,
+  poweredByText: {
+    fontSize: "0.75rem",
+    fontWeight: "600",
+    color: "#94a3b8",
+  } as React.CSSProperties,
+  pythLogo: {
+    height: "18px",
+    width: "auto",
+    display: "block",
+    filter: "brightness(0) invert(1)",
+  } as React.CSSProperties,
   controlsContainer: {
     position: "absolute",
     top: "10px",
