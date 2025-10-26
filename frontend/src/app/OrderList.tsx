@@ -5,6 +5,7 @@ import { type Address, formatUnits } from "viem";
 import { useMarketOrders } from "@/hooks/useContractEvents";
 import { useTokenRegistryContext } from "@/app/TokenRegistryContext";
 import { useMemo } from "react";
+import { TableSkeleton } from "@/app/components/Skeleton";
 
 // Helper function to format numbers to max decimals
 function formatToMaxDecimals(value: string, maxDecimals: number = 4): string {
@@ -81,8 +82,11 @@ export function OrderList({ marketId }: { marketId: string }) {
 
   const renderOrderRow = (order: OrderWithPrice, isAsk: boolean) => {
     const depthPercentage = maxTotal > 0 ? (order.total / maxTotal) * 100 : 0;
-    const color = "#ef4444"; // All orders are sell orders, use same color
-    const bgColor = "rgba(239, 68, 68, 0.1)";
+
+    // All orders are sell orders, use red/orange theme
+    const color = "#ef4444";
+    const bgColor = "linear-gradient(90deg, rgba(239, 68, 68, 0) 0%, rgba(239, 68, 68, 0.15) 100%)";
+    const hoverBgColor = "rgba(239, 68, 68, 0.2)";
 
     // Format price range
     const minPriceNum = order.minPrice > 0n ? Number(formatUnits(order.minPrice, 18)) : 0;
@@ -113,16 +117,16 @@ export function OrderList({ marketId }: { marketId: string }) {
           fontSize: "0.75rem",
           color,
           cursor: "pointer",
-          transition: "background 0.15s",
+          transition: "all 0.2s ease",
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.background = "rgba(239, 68, 68, 0.15)";
+          e.currentTarget.style.background = hoverBgColor;
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.background = "transparent";
         }}
       >
-        {/* Depth bar */}
+        {/* Enhanced Depth bar with gradient */}
         <div
           style={{
             position: "absolute",
@@ -132,6 +136,7 @@ export function OrderList({ marketId }: { marketId: string }) {
             width: `${depthPercentage}%`,
             background: bgColor,
             zIndex: 0,
+            transition: "width 0.3s ease",
           }}
         />
         <div style={{ position: "relative", zIndex: 1, textAlign: "left", fontSize: "0.7rem", color: "var(--text-muted)" }}>
@@ -184,7 +189,7 @@ export function OrderList({ marketId }: { marketId: string }) {
       {!marketId ? (
         <p style={{ fontSize: "0.875rem", padding: "1rem" }}>Market ID not found.</p>
       ) : isLoading ? (
-        <div style={{ fontSize: "0.875rem", padding: "1rem" }}>Loading orders...</div>
+        <TableSkeleton rows={8} columns={4} />
       ) : error ? (
         <div className="error-message">Error: {error}</div>
       ) : orderArray.length === 0 ? (

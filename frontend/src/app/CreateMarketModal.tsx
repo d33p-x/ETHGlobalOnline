@@ -55,13 +55,12 @@ export function CreateMarketModal({ isOpen, onClose, existingMarkets }: CreateMa
       decimals: tokenInfoMap[address]?.decimals ?? 18,
     }));
 
-  // Check if market already exists
+  // Check if market already exists (only exact match, not reverse)
+  // Note: WETH/USDT and USDT/WETH are different markets
   const marketExists = existingMarkets.some(
     (m) =>
-      (m.token0.toLowerCase() === token0.toLowerCase() &&
-        m.token1.toLowerCase() === token1.toLowerCase()) ||
-      (m.token0.toLowerCase() === token1.toLowerCase() &&
-        m.token1.toLowerCase() === token0.toLowerCase())
+      m.token0.toLowerCase() === token0.toLowerCase() &&
+      m.token1.toLowerCase() === token1.toLowerCase()
   );
 
   const handleSubmit = async (e: React.FormEvent) => {

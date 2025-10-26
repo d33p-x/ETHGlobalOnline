@@ -194,7 +194,7 @@ export function FillOrderForm({
       <div style={styles.feeInfoBox}>
         <span style={styles.feeIcon}>💳</span>
         <div style={styles.feeText}>
-          <strong>Taker Fee: 0.10%</strong> - Fee for taking liquidity from the order book
+          <strong>Taker Fee: 0.20%</strong> - Fee for taking liquidity from the order book
         </div>
       </div>
 

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { usePublicClient, useWatchContractEvent, useChainId } from "wagmi";
 import { type Address, formatUnits } from "viem";
 import { getP2PAddress, getDeploymentBlock } from "./config";
+import { TableSkeleton } from "@/app/components/Skeleton";
 
 // --- Config ---
 
@@ -47,6 +48,21 @@ function formatToMaxDecimals(value: string, maxDecimals: number = 4): string {
   return parseFloat(fixed).toString();
 }
 
+// Helper function to format relative time
+function formatRelativeTime(timestamp: number): string {
+  const now = Date.now();
+  const diff = now - timestamp * 1000; // timestamp is in seconds, convert to ms
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (days > 0) return `${days}d ago`;
+  if (hours > 0) return `${hours}h ago`;
+  if (minutes > 0) return `${minutes}m ago`;
+  return `${seconds}s ago`;
+}
+
 export function TradesList({ marketId }: { marketId: string }) {
   const chainId = useChainId();
 
@@ -70,18 +86,12 @@ export function TradesList({ marketId }: { marketId: string }) {
     const fetchTradeLogs = async () => {
       setIsLoading(true);
       setError(null);
-      console.log(`Fetching trade logs for marketId: ${marketId}`);
       try {
         // Get current block number
         const latestBlock = await client.getBlockNumber();
-        console.log(`Latest block: ${latestBlock}`);
 
         // Get deployment block from config
         const fromBlock = getDeploymentBlock(chainId);
-
-        console.log(
-          `Fetching trade logs from block ${fromBlock} to ${latestBlock}`
-        );
 
         const filledLogs = await client.getLogs({
           address: getP2PAddress(chainId),
@@ -92,7 +102,6 @@ export function TradesList({ marketId }: { marketId: string }) {
           fromBlock,
           toBlock: latestBlock,
         });
-        console.log(`Found ${filledLogs.length} OrderFilled logs`);
 
         // Convert logs to Trade objects
         const tradesData: Trade[] = [];
@@ -135,8 +144,25 @@ export function TradesList({ marketId }: { marketId: string }) {
         );
 
         // Keep only the most recent 50 trades
-        setTrades(tradesData.slice(0, 50));
-        console.log("Processed trades:", tradesData.length);
+        const recentTrades = tradesData.slice(0, 50);
+
+        // Fetch timestamps for the recent trades
+        const tradesWithTimestamps = await Promise.all(
+          recentTrades.map(async (trade) => {
+            try {
+              const block = await client.getBlock({ blockNumber: trade.blockNumber });
+              return {
+                ...trade,
+                timestamp: Number(block.timestamp),
+              };
+            } catch {
+              // If we can't fetch the timestamp, return trade without it
+              return trade;
+            }
+          })
+        );
+
+        setTrades(tradesWithTimestamps);
       } catch (err: any) {
         console.error("Error fetching trade logs:", err);
         setError(`Failed to fetch trades: ${err.shortMessage || err.message}`);
@@ -159,7 +185,6 @@ export function TradesList({ marketId }: { marketId: string }) {
     },
     enabled: !!marketId,
     onLogs(logs) {
-      console.log("New OrderFilled event(s) detected:", logs);
       setTrades((prevTrades) => {
         const newTrades = [...prevTrades];
         for (const log of logs) {
@@ -187,7 +212,7 @@ export function TradesList({ marketId }: { marketId: string }) {
               (t) => t.transactionHash === log.transactionHash
             );
             if (!exists) {
-              // Add new trade at the beginning
+              // Add new trade at the beginning with current timestamp (as it just happened)
               newTrades.unshift({
                 orderId,
                 token0,
@@ -197,6 +222,7 @@ export function TradesList({ marketId }: { marketId: string }) {
                 taker,
                 blockNumber: log.blockNumber,
                 transactionHash: log.transactionHash,
+                timestamp: Math.floor(Date.now() / 1000), // Current time in seconds
               });
             }
           }
@@ -237,7 +263,7 @@ export function TradesList({ marketId }: { marketId: string }) {
       {!marketId ? (
         <p style={{ fontSize: "0.875rem", padding: "1rem" }}>Market ID not found.</p>
       ) : isLoading ? (
-        <div style={{ fontSize: "0.875rem", padding: "1rem" }}>Loading trades...</div>
+        <TableSkeleton rows={6} columns={4} />
       ) : error ? (
         <div className="error-message">Error: {error}</div>
       ) : trades.length === 0 ? (
@@ -248,7 +274,7 @@ export function TradesList({ marketId }: { marketId: string }) {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr 1fr 1fr",
+              gridTemplateColumns: "1fr 1fr 1fr 0.8fr",
               padding: "0.5rem 0.5rem 0.375rem",
               fontSize: "0.6875rem",
               fontWeight: "600",
@@ -260,17 +286,21 @@ export function TradesList({ marketId }: { marketId: string }) {
             <div style={{ textAlign: "left" }}>Price</div>
             <div style={{ textAlign: "right" }}>Amount</div>
             <div style={{ textAlign: "right" }}>Total</div>
+            <div style={{ textAlign: "right" }}>Time</div>
           </div>
 
           <div style={{ overflow: "auto", flex: 1 }}>
             {trades.map((trade, index) => {
               const price = getPrice(trade);
+              const relativeTime = trade.timestamp ? formatRelativeTime(trade.timestamp) : "—";
+              const exactTime = trade.timestamp ? new Date(trade.timestamp * 1000).toLocaleString() : undefined;
+
               return (
                 <div
                   key={`${trade.transactionHash}-${index}`}
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "1fr 1fr 1fr",
+                    gridTemplateColumns: "1fr 1fr 1fr 0.8fr",
                     padding: "0.375rem 0.5rem",
                     fontSize: "0.75rem",
                     color: "#10b981",
@@ -291,6 +321,12 @@ export function TradesList({ marketId }: { marketId: string }) {
                   </div>
                   <div style={{ textAlign: "right" }}>
                     {formatToMaxDecimals(formatUnits(trade.amount1Spent, decimals1))}
+                  </div>
+                  <div
+                    style={{ textAlign: "right", fontSize: "0.7rem", color: "var(--text-muted)" }}
+                    title={exactTime}
+                  >
+                    {relativeTime}
                   </div>
                 </div>
               );

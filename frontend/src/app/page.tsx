@@ -29,12 +29,12 @@ function App() {
 
           <div style={styles.statsBar}>
             <div style={styles.statItem}>
-              <div style={styles.statValue}>0.05%</div>
+              <div style={styles.statValue}>0.15%</div>
               <div style={styles.statLabel}>Seller Bonus</div>
             </div>
             <div style={styles.statDivider}></div>
             <div style={styles.statItem}>
-              <div style={styles.statValue}>0.10%</div>
+              <div style={styles.statValue}>0.20%</div>
               <div style={styles.statLabel}>Buyer Fee</div>
             </div>
             <div style={styles.statDivider}></div>

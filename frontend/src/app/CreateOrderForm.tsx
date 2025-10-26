@@ -171,7 +171,7 @@ export function CreateOrderForm({
       <div style={styles.feeInfoBox}>
         <span style={styles.feeIcon}>💰</span>
         <div style={styles.feeText}>
-          <strong>Maker Rebate: +0.05%</strong> - Earn a fee rebate for providing liquidity
+          <strong>Maker Rebate: +0.15%</strong> - Earn a fee rebate for providing liquidity
         </div>
       </div>
 

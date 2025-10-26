@@ -189,39 +189,29 @@ export function MyOrders({ marketId }: { marketId: string }) {
         toBlock: latestBlock,
       });
 
-      console.log(`Processing ${reducedLogs.length} reduction/cancellation logs`);
       for (const log of reducedLogs) {
         const orderId = log.args.orderId;
         if (orderId !== undefined && myOpenOrders.has(orderId)) {
           const order = myOpenOrders.get(orderId)!;
           const amountClosed = log.args.amount0Closed!;
-          console.log(`Reducing order ${orderId}: ${order.remainingAmount0} - ${amountClosed}`);
           order.remainingAmount0 -= amountClosed;
-          console.log(`New remaining amount: ${order.remainingAmount0}`);
         }
       }
 
-      console.log(`Processing ${filledLogs.length} fill logs`);
       for (const log of filledLogs) {
         const orderId = log.args.orderId;
         if (orderId !== undefined && myOpenOrders.has(orderId)) {
           const order = myOpenOrders.get(orderId)!;
           const amountFilled = log.args.amount0Filled!;
-          console.log(`Filling order ${orderId}: ${order.remainingAmount0} - ${amountFilled}`);
           order.remainingAmount0 -= amountFilled;
-          console.log(`New remaining amount: ${order.remainingAmount0}`);
         }
       }
 
-      console.log(`Checking for orders to delete...`);
       myOpenOrders.forEach((order) => {
         if (order.remainingAmount0 <= 0n) {
-          console.log(`Deleting order ${order.orderId} with remaining amount ${order.remainingAmount0}`);
           myOpenOrders.delete(order.orderId);
         }
       });
-
-      console.log(`Final order count: ${myOpenOrders.size}`);
 
       setOpenOrders(myOpenOrders);
     } catch (err: any) {

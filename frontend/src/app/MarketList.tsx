@@ -188,7 +188,6 @@ export function MarketList() {
         });
 
         setMarkets(marketsWithStats);
-        console.log("Fetched markets with stats:", marketsWithStats);
       } catch (err: any) {
         console.error("Error fetching market data:", err);
         setError(
@@ -276,7 +275,6 @@ export function MarketList() {
     abi: p2pAbi,
     eventName: "MarketCreated",
     onLogs(logs) {
-      console.log("New market created!", logs);
       for (const log of logs) {
         if (!log.args) continue;
         const newMarket = {

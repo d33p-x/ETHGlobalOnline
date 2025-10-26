@@ -74,11 +74,13 @@ contract P2P is ReentrancyGuard {
 
     IPyth public pyth;
     address public owner;
+    address public feeCollector;
     uint256 public globalNextOrderId = 1; // Global order ID counter
 
     constructor(address _pythAddress) {
         pyth = IPyth(_pythAddress);
         owner = msg.sender;
+        feeCollector = 0xc28b89b400230e8F7b6419bc44F2545f8864f0f7;
     }
 
     function createMarket(address _token0, address _token1) public {
@@ -249,7 +251,7 @@ contract P2P is ReentrancyGuard {
             15
         );
 
-        // convert int64 to uint256 (think about changing this later)
+        // convert int64 to uint256
         require(priceObject0.price >= 0);
         require(priceObject1.price >= 0);
         //  absolute exponents for uint256
@@ -262,8 +264,8 @@ contract P2P is ReentrancyGuard {
         uint256 price1 = (uint256(uint64(priceObject1.price)) * 1e18) /
             (10 ** absExpo1);
 
-        uint256 price0Buyer = (price0 * 100100) / 100000; // buyer pays 0.1% more
-        uint256 price0Seller = (price0 * 100050) / 100000; // seller gets 0.05% more
+        uint256 price0Buyer = (price0 * 100200) / 100000; // buyer pays 0.2% more
+        uint256 price0Seller = (price0 * 100150) / 100000; // seller gets 0.15% more
 
         Market storage market = markets[marketId];
 
@@ -373,11 +375,11 @@ contract P2P is ReentrancyGuard {
             dec1Factor) / (price1 * dec0Factor);
         uint256 protocolFee = amount1ActuallyNeeded - amount1SpentOnSellers;
 
-        // Transfer protocol fee from buyer to owner
+        // Transfer protocol fee from buyer to fee collector
         if (protocolFee > 0) {
             IERC20Metadata(_token1).transferFrom(
                 msg.sender,
-                owner,
+                feeCollector,
                 protocolFee
             );
         }
