@@ -62,7 +62,7 @@ export function CreateOrderForm({
     tokenDecimals: token0Decimals,
   });
 
-  // Use shared Pyth price hook
+  // Use shared Pyth price hook (disabled automatic polling, only fetch on-demand)
   const {
     pythUpdateData,
     isLoading: isPythLoading,
@@ -70,7 +70,7 @@ export function CreateOrderForm({
     fetchFreshPythData,
   } = usePythPrice({
     priceFeedIds: tokenInfo0?.priceFeedId ? [tokenInfo0.priceFeedId] : [],
-    enabled: !!tokenInfo0?.priceFeedId,
+    enabled: false, // Disable auto-polling, we fetch fresh data on-demand before tx
   });
 
   const {

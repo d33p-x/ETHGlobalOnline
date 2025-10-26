@@ -48,6 +48,8 @@ contract DeploySepolia is Script {
         P2P p2p = new P2P(pythOracle);
         console.log("   P2P deployed at:", address(p2p));
         console.log("");
+        console.log("   Note: Run this script with --verify --verifier etherscan --etherscan-api-key $ETHERSCAN_API_KEY to verify on deployment");
+        console.log("");
 
         // 2. Set up Price Feeds for ALL tokens
         console.log("2. Setting up Price Feeds...");
@@ -150,6 +152,10 @@ contract DeploySepolia is Script {
         console.log(
             "5. Users can call faucet() on mock tokens to get 1000 tokens!"
         );
+        console.log("");
+        console.log("Verification:");
+        console.log("To deploy with automatic verification, run:");
+        console.log("forge script script/DeploySepolia.s.sol:DeploySepolia --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast --verify --verifier etherscan --etherscan-api-key $ETHERSCAN_API_KEY");
         console.log("");
         console.log("View on BaseScan:");
         console.log("https://sepolia.basescan.org/address/", address(p2p));

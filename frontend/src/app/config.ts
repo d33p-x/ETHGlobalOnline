@@ -28,8 +28,8 @@ type NetworkConfig = {
  */
 const NETWORK_CONFIGS: Record<number, NetworkConfig> = {
   [baseSepolia.id]: {
-    p2pAddress: "0x41d897084fD42d0509f752954FEcf48C62307b3f",
-    deploymentBlock: 32804371n,
+    p2pAddress: "0x4F7e5b32E1C1eA49c597E840804CE898F53cC149",
+    deploymentBlock: 32854371n,
     tokens: {
       WETH: "0x4200000000000000000000000000000000000006",
       USDC: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",

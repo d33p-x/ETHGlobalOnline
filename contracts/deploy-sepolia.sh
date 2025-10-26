@@ -26,6 +26,16 @@ if [ -z "$PRIVATE_KEY" ]; then
     exit 1
 fi
 
+# Check if ETHERSCAN_API_KEY is set
+if [ -z "$ETHERSCAN_API_KEY" ]; then
+    echo -e "${YELLOW}Warning: ETHERSCAN_API_KEY not set - contracts will not be verified${NC}"
+    echo -e "${YELLOW}Add ETHERSCAN_API_KEY to .env for automatic verification${NC}"
+    VERIFY_FLAGS=""
+else
+    echo -e "${GREEN}Etherscan API key found - contracts will be verified${NC}"
+    VERIFY_FLAGS="--verify --verifier etherscan --etherscan-api-key $ETHERSCAN_API_KEY"
+fi
+
 # Use public RPC if not provided
 if [ -z "$BASE_SEPOLIA_RPC_URL" ]; then
     echo -e "${YELLOW}Warning: BASE_SEPOLIA_RPC_URL not set, using public endpoint${NC}"
@@ -42,6 +52,7 @@ echo ""
 forge script script/DeploySepolia.s.sol:DeploySepolia \
     --rpc-url $BASE_SEPOLIA_RPC_URL \
     --broadcast \
+    $VERIFY_FLAGS \
     -vvv
 
 if [ $? -eq 0 ]; then

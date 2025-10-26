@@ -385,151 +385,8 @@ export function useMarketOrders({ marketId, enabled = true }: UseMarketOrdersPro
     },
   });
 
-  // Periodic refresh to ensure data stays in sync (every 30 seconds)
-  useEffect(() => {
-    if (!client || !p2pAddress || !marketId || !enabled || !historicalSyncComplete) {
-      return;
-    }
-
-    const refreshOrders = async () => {
-      try {
-        const latestBlock = await client.getBlockNumber();
-        const fromBlock = getDeploymentBlock(chainId);
-
-        // Fetch all order-related events
-        const [createdLogs, reducedLogs, filledLogs] = await Promise.all([
-          client.getLogs({
-            address: p2pAddress,
-            event: p2pAbi[1], // OrderCreated
-            args: { marketId: marketId as `0x${string}` },
-            fromBlock,
-            toBlock: latestBlock,
-          }),
-          client.getLogs({
-            address: p2pAddress,
-            event: p2pAbi[3], // OrderReducedOrCancelled
-            args: { marketId: marketId as `0x${string}` },
-            fromBlock,
-            toBlock: latestBlock,
-          }),
-          client.getLogs({
-            address: p2pAddress,
-            event: p2pAbi[2], // OrderFilled
-            args: { marketId: marketId as `0x${string}` },
-            fromBlock,
-            toBlock: latestBlock,
-          }),
-        ]);
-
-        // Rebuild order map from scratch
-        const refreshedOrders = new Map<bigint, Order>();
-        const newProcessedEvents = new Set<string>();
-
-        // Process creations
-        for (const log of createdLogs) {
-          const eventId = `${log.transactionHash}-${log.logIndex}`;
-          newProcessedEvents.add(eventId);
-
-          const {
-            orderId,
-            maker,
-            token0,
-            token1,
-            amount0,
-            maxPrice,
-            minPrice,
-          } = log.args;
-          if (
-            orderId !== undefined &&
-            maker &&
-            token0 &&
-            token1 &&
-            amount0 !== undefined &&
-            maxPrice !== undefined &&
-            minPrice !== undefined
-          ) {
-            refreshedOrders.set(orderId, {
-              orderId,
-              maker,
-              token0,
-              token1,
-              initialAmount0: amount0,
-              remainingAmount0: amount0,
-              maxPrice,
-              minPrice,
-            });
-          }
-        }
-
-        // Process reductions/cancellations
-        for (const log of reducedLogs) {
-          const eventId = `${log.transactionHash}-${log.logIndex}`;
-          newProcessedEvents.add(eventId);
-
-          const orderId = log.args.orderId;
-          const amountClosed = log.args.amount0Closed;
-          if (
-            orderId !== undefined &&
-            amountClosed !== undefined &&
-            refreshedOrders.has(orderId)
-          ) {
-            const order = refreshedOrders.get(orderId)!;
-            if (order.remainingAmount0 >= amountClosed) {
-              order.remainingAmount0 -= amountClosed;
-            } else {
-              order.remainingAmount0 = 0n;
-            }
-            if (order.remainingAmount0 === 0n) {
-              refreshedOrders.delete(orderId);
-            }
-          }
-        }
-
-        // Process fills
-        for (const log of filledLogs) {
-          const eventId = `${log.transactionHash}-${log.logIndex}`;
-          newProcessedEvents.add(eventId);
-
-          const orderId = log.args.orderId;
-          const amountFilled = log.args.amount0Filled;
-          if (
-            orderId !== undefined &&
-            amountFilled !== undefined &&
-            refreshedOrders.has(orderId)
-          ) {
-            const order = refreshedOrders.get(orderId)!;
-            if (order.remainingAmount0 >= amountFilled) {
-              order.remainingAmount0 -= amountFilled;
-            } else {
-              order.remainingAmount0 = 0n;
-            }
-            if (order.remainingAmount0 === 0n) {
-              refreshedOrders.delete(orderId);
-            }
-          }
-        }
-
-        // Filter out any orders with zero remaining amount (safety check)
-        for (const [orderId, order] of refreshedOrders.entries()) {
-          if (order.remainingAmount0 === 0n) {
-            refreshedOrders.delete(orderId);
-          }
-        }
-
-        setOrders(refreshedOrders);
-        setProcessedEvents(newProcessedEvents);
-        setSyncBlockNumber(latestBlock);
-      } catch (err) {
-        console.error("Error refreshing orders:", err);
-        // Don't update error state, just log - real-time watchers will continue working
-      }
-    };
-
-    // Refresh every 30 seconds
-    const interval = setInterval(refreshOrders, 30000);
-
-    return () => clearInterval(interval);
-  }, [client, marketId, p2pAddress, chainId, enabled, historicalSyncComplete]);
+  // Note: Removed periodic 30-second refresh to reduce blockchain calls.
+  // Real-time event watchers above will keep data in sync after initial historical fetch.
 
   return {
     orders,
@@ -538,7 +395,12 @@ export function useMarketOrders({ marketId, enabled = true }: UseMarketOrdersPro
   };
 }
 
+// Simple cache for liquidity checks to avoid repeated full historical scans
+const liquidityCache = new Map<string, { hasLiquidity: boolean; timestamp: number }>();
+const CACHE_DURATION = 30_000; // 30 seconds
+
 // Helper function to check if a market has liquidity
+// Now uses simple caching to avoid excessive blockchain calls
 export async function checkMarketLiquidity(
   client: any,
   p2pAddress: Address,
@@ -546,6 +408,13 @@ export async function checkMarketLiquidity(
   chainId: number
 ): Promise<boolean> {
   try {
+    // Check cache first
+    const cached = liquidityCache.get(marketId);
+    const now = Date.now();
+    if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+      return cached.hasLiquidity;
+    }
+
     const latestBlock = await client.getBlockNumber();
     const fromBlock = getDeploymentBlock(chainId);
 
@@ -605,7 +474,12 @@ export async function checkMarketLiquidity(
       }
     }
 
-    return Array.from(orderMap.values()).some((order) => order.remainingAmount0 > 0n);
+    const hasLiquidity = Array.from(orderMap.values()).some((order) => order.remainingAmount0 > 0n);
+
+    // Update cache
+    liquidityCache.set(marketId, { hasLiquidity, timestamp: now });
+
+    return hasLiquidity;
   } catch (error) {
     return false;
   }

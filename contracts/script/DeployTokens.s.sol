@@ -24,6 +24,8 @@ contract DeployTokens is Script {
         // Deploy mock tokens (these will be deployed once)
         console.log("Deploying Mock Tokens...");
         console.log("");
+        console.log("Note: Run this script with --verify --verifier etherscan --etherscan-api-key $ETHERSCAN_API_KEY to verify on deployment");
+        console.log("");
 
         MockERC20 usdt = new MockERC20("Tether USD", "USDT", 6);
         console.log("USDT deployed at:   ", address(usdt));
@@ -76,6 +78,10 @@ contract DeployTokens is Script {
         console.log(
             "Users can call faucet() on any mock token to get 1000 tokens!"
         );
+        console.log("");
+        console.log("Verification:");
+        console.log("To deploy with automatic verification, run:");
+        console.log("forge script script/DeployTokens.s.sol:DeployTokens --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast --verify --verifier etherscan --etherscan-api-key $ETHERSCAN_API_KEY");
         console.log("");
         console.log("View on BaseScan:");
         console.log("https://sepolia.basescan.org/address/", address(usdt));

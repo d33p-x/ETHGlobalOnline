@@ -35,7 +35,7 @@ export function usePythPrice({
   const [pythContractAddress, setPythContractAddress] =
     useState<Address | null>(null);
 
-  // Fetch Pyth contract address once
+  // Fetch Pyth contract address once (always needed, even if auto-polling is disabled)
   useEffect(() => {
     if (!p2pAddress || pythContractAddress) return;
 
@@ -54,6 +54,7 @@ export function usePythPrice({
     };
 
     fetchPythContractAddress();
+    // Note: This runs regardless of 'enabled' state so fetchFreshPythData() works
   }, [p2pAddress, config, chainId, pythContractAddress]);
 
   // Fetch fresh price data

@@ -12,7 +12,20 @@ export function Providers(props: {
   initialState?: State
 }) {
   const [config] = useState(() => getConfig())
-  const [queryClient] = useState(() => new QueryClient())
+  const [queryClient] = useState(() => new QueryClient({
+    defaultOptions: {
+      queries: {
+        // Cache data for 30 seconds before marking as stale
+        staleTime: 30_000,
+        // Keep unused data in cache for 5 minutes
+        gcTime: 5 * 60 * 1000,
+        // Reduce refetching on window focus
+        refetchOnWindowFocus: false,
+        // Retry failed requests only once
+        retry: 1,
+      },
+    },
+  }))
 
   return (
     <WagmiProvider config={config} initialState={props.initialState}>

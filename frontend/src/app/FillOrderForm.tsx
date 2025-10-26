@@ -68,7 +68,7 @@ export function FillOrderForm({
     tokenDecimals: token1Decimals,
   });
 
-  // Use shared Pyth price hook
+  // Use shared Pyth price hook (disabled automatic polling, only fetch on-demand)
   const {
     pythUpdateData,
     isLoading: isPythLoading,
@@ -76,7 +76,7 @@ export function FillOrderForm({
     fetchFreshPythData,
   } = usePythPrice({
     priceFeedIds: [tokenInfo0?.priceFeedId, tokenInfo1?.priceFeedId].filter(Boolean) as string[],
-    enabled: !!tokenInfo0?.priceFeedId && !!tokenInfo1?.priceFeedId,
+    enabled: false, // Disable auto-polling, we fetch fresh data on-demand before tx
   });
 
   const {
