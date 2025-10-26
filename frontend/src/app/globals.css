@@ -964,7 +964,7 @@ a,
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  max-width: 100%;
+  max-width: 2048px;
   margin: 0 auto;
   width: 100%;
 }

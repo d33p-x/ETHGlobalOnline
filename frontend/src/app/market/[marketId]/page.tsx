@@ -487,7 +487,7 @@ export default function MarketPage({
                   lineHeight: 1,
                 }}
               >
-                ${marketStats.price}
+                {marketStats.price} {symbol1}
               </div>
             </div>
 

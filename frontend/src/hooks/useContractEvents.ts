@@ -33,17 +33,26 @@ export function useMarketOrders({ marketId, enabled = true }: UseMarketOrdersPro
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Track when historical fetch is complete and the sync point block number
+  const [historicalSyncComplete, setHistoricalSyncComplete] = useState(false);
+  const [syncBlockNumber, setSyncBlockNumber] = useState<bigint>(0n);
+
+  // Track processed events to prevent duplicates (using txHash-logIndex as key)
+  const [processedEvents, setProcessedEvents] = useState<Set<string>>(new Set());
+
   // Fetch historical events
   useEffect(() => {
     if (!client || !p2pAddress || !marketId || !enabled) {
       setOrders(new Map());
       setIsLoading(false);
+      setHistoricalSyncComplete(false);
       return;
     }
 
     const fetchOrderLogs = async () => {
       setIsLoading(true);
       setError(null);
+      setHistoricalSyncComplete(false);
 
       try {
         const latestBlock = await client.getBlockNumber();
@@ -74,11 +83,16 @@ export function useMarketOrders({ marketId, enabled = true }: UseMarketOrdersPro
           }),
         ]);
 
-        // Build order map
+        // Build order map and track processed events
         const initialOrders = new Map<bigint, Order>();
+        const newProcessedEvents = new Set<string>();
 
         // Process creations
         for (const log of createdLogs) {
+          // Track this event as processed
+          const eventId = `${log.transactionHash}-${log.logIndex}`;
+          newProcessedEvents.add(eventId);
+
           const {
             orderId,
             maker,
@@ -112,6 +126,10 @@ export function useMarketOrders({ marketId, enabled = true }: UseMarketOrdersPro
 
         // Process reductions/cancellations
         for (const log of reducedLogs) {
+          // Track this event as processed
+          const eventId = `${log.transactionHash}-${log.logIndex}`;
+          newProcessedEvents.add(eventId);
+
           const orderId = log.args.orderId;
           const amountClosed = log.args.amount0Closed;
           if (
@@ -133,6 +151,10 @@ export function useMarketOrders({ marketId, enabled = true }: UseMarketOrdersPro
 
         // Process fills
         for (const log of filledLogs) {
+          // Track this event as processed
+          const eventId = `${log.transactionHash}-${log.logIndex}`;
+          newProcessedEvents.add(eventId);
+
           const orderId = log.args.orderId;
           const amountFilled = log.args.amount0Filled;
           if (
@@ -152,10 +174,21 @@ export function useMarketOrders({ marketId, enabled = true }: UseMarketOrdersPro
           }
         }
 
+        // Filter out any orders with zero remaining amount (safety check)
+        for (const [orderId, order] of initialOrders.entries()) {
+          if (order.remainingAmount0 === 0n) {
+            initialOrders.delete(orderId);
+          }
+        }
+
         setOrders(initialOrders);
+        setProcessedEvents(newProcessedEvents);
+        setSyncBlockNumber(latestBlock);
+        setHistoricalSyncComplete(true);
       } catch (err: any) {
         setError(`Failed to fetch orders: ${err.shortMessage || err.message}`);
         setOrders(new Map());
+        setHistoricalSyncComplete(true); // Allow retries
       } finally {
         setIsLoading(false);
       }
@@ -164,17 +197,38 @@ export function useMarketOrders({ marketId, enabled = true }: UseMarketOrdersPro
     fetchOrderLogs();
   }, [client, marketId, p2pAddress, chainId, enabled]);
 
-  // Watch for new OrderCreated events
+  // Watch for new OrderCreated events (only after historical sync is complete)
   useWatchContractEvent({
     address: p2pAddress,
     abi: p2pAbi,
     eventName: "OrderCreated",
     args: marketId ? { marketId: marketId as `0x${string}` } : undefined,
-    enabled: !!marketId && enabled,
+    enabled: !!marketId && enabled && historicalSyncComplete,
     onLogs(logs) {
       setOrders((prevOrders) => {
         const newOrders = new Map(prevOrders);
+
         for (const log of logs) {
+          // Check for duplicate events
+          const eventId = `${log.transactionHash}-${log.logIndex}`;
+
+          setProcessedEvents((prev) => {
+            if (prev.has(eventId)) {
+              // Already processed, skip
+              return prev;
+            }
+
+            // Mark as processed
+            const updated = new Set(prev);
+            updated.add(eventId);
+            return updated;
+          });
+
+          // Skip if already processed
+          if (processedEvents.has(eventId)) {
+            continue;
+          }
+
           const {
             orderId,
             maker,
@@ -211,17 +265,38 @@ export function useMarketOrders({ marketId, enabled = true }: UseMarketOrdersPro
     },
   });
 
-  // Watch for OrderReducedOrCancelled events
+  // Watch for OrderReducedOrCancelled events (only after historical sync is complete)
   useWatchContractEvent({
     address: p2pAddress,
     abi: p2pAbi,
     eventName: "OrderReducedOrCancelled",
     args: marketId ? { marketId: marketId as `0x${string}` } : undefined,
-    enabled: !!marketId && enabled,
+    enabled: !!marketId && enabled && historicalSyncComplete,
     onLogs(logs) {
       setOrders((prevOrders) => {
         const newOrders = new Map(prevOrders);
+
         for (const log of logs) {
+          // Check for duplicate events
+          const eventId = `${log.transactionHash}-${log.logIndex}`;
+
+          setProcessedEvents((prev) => {
+            if (prev.has(eventId)) {
+              // Already processed, skip
+              return prev;
+            }
+
+            // Mark as processed
+            const updated = new Set(prev);
+            updated.add(eventId);
+            return updated;
+          });
+
+          // Skip if already processed
+          if (processedEvents.has(eventId)) {
+            continue;
+          }
+
           const { orderId, amount0Closed } = log.args;
 
           if (
@@ -250,17 +325,38 @@ export function useMarketOrders({ marketId, enabled = true }: UseMarketOrdersPro
     },
   });
 
-  // Watch for OrderFilled events
+  // Watch for OrderFilled events (only after historical sync is complete)
   useWatchContractEvent({
     address: p2pAddress,
     abi: p2pAbi,
     eventName: "OrderFilled",
     args: marketId ? { marketId: marketId as `0x${string}` } : undefined,
-    enabled: !!marketId && enabled,
+    enabled: !!marketId && enabled && historicalSyncComplete,
     onLogs(logs) {
       setOrders((prevOrders) => {
         const newOrders = new Map(prevOrders);
+
         for (const log of logs) {
+          // Check for duplicate events
+          const eventId = `${log.transactionHash}-${log.logIndex}`;
+
+          setProcessedEvents((prev) => {
+            if (prev.has(eventId)) {
+              // Already processed, skip
+              return prev;
+            }
+
+            // Mark as processed
+            const updated = new Set(prev);
+            updated.add(eventId);
+            return updated;
+          });
+
+          // Skip if already processed
+          if (processedEvents.has(eventId)) {
+            continue;
+          }
+
           const { orderId, amount0Filled } = log.args;
 
           if (
@@ -288,6 +384,152 @@ export function useMarketOrders({ marketId, enabled = true }: UseMarketOrdersPro
       });
     },
   });
+
+  // Periodic refresh to ensure data stays in sync (every 30 seconds)
+  useEffect(() => {
+    if (!client || !p2pAddress || !marketId || !enabled || !historicalSyncComplete) {
+      return;
+    }
+
+    const refreshOrders = async () => {
+      try {
+        const latestBlock = await client.getBlockNumber();
+        const fromBlock = getDeploymentBlock(chainId);
+
+        // Fetch all order-related events
+        const [createdLogs, reducedLogs, filledLogs] = await Promise.all([
+          client.getLogs({
+            address: p2pAddress,
+            event: p2pAbi[1], // OrderCreated
+            args: { marketId: marketId as `0x${string}` },
+            fromBlock,
+            toBlock: latestBlock,
+          }),
+          client.getLogs({
+            address: p2pAddress,
+            event: p2pAbi[3], // OrderReducedOrCancelled
+            args: { marketId: marketId as `0x${string}` },
+            fromBlock,
+            toBlock: latestBlock,
+          }),
+          client.getLogs({
+            address: p2pAddress,
+            event: p2pAbi[2], // OrderFilled
+            args: { marketId: marketId as `0x${string}` },
+            fromBlock,
+            toBlock: latestBlock,
+          }),
+        ]);
+
+        // Rebuild order map from scratch
+        const refreshedOrders = new Map<bigint, Order>();
+        const newProcessedEvents = new Set<string>();
+
+        // Process creations
+        for (const log of createdLogs) {
+          const eventId = `${log.transactionHash}-${log.logIndex}`;
+          newProcessedEvents.add(eventId);
+
+          const {
+            orderId,
+            maker,
+            token0,
+            token1,
+            amount0,
+            maxPrice,
+            minPrice,
+          } = log.args;
+          if (
+            orderId !== undefined &&
+            maker &&
+            token0 &&
+            token1 &&
+            amount0 !== undefined &&
+            maxPrice !== undefined &&
+            minPrice !== undefined
+          ) {
+            refreshedOrders.set(orderId, {
+              orderId,
+              maker,
+              token0,
+              token1,
+              initialAmount0: amount0,
+              remainingAmount0: amount0,
+              maxPrice,
+              minPrice,
+            });
+          }
+        }
+
+        // Process reductions/cancellations
+        for (const log of reducedLogs) {
+          const eventId = `${log.transactionHash}-${log.logIndex}`;
+          newProcessedEvents.add(eventId);
+
+          const orderId = log.args.orderId;
+          const amountClosed = log.args.amount0Closed;
+          if (
+            orderId !== undefined &&
+            amountClosed !== undefined &&
+            refreshedOrders.has(orderId)
+          ) {
+            const order = refreshedOrders.get(orderId)!;
+            if (order.remainingAmount0 >= amountClosed) {
+              order.remainingAmount0 -= amountClosed;
+            } else {
+              order.remainingAmount0 = 0n;
+            }
+            if (order.remainingAmount0 === 0n) {
+              refreshedOrders.delete(orderId);
+            }
+          }
+        }
+
+        // Process fills
+        for (const log of filledLogs) {
+          const eventId = `${log.transactionHash}-${log.logIndex}`;
+          newProcessedEvents.add(eventId);
+
+          const orderId = log.args.orderId;
+          const amountFilled = log.args.amount0Filled;
+          if (
+            orderId !== undefined &&
+            amountFilled !== undefined &&
+            refreshedOrders.has(orderId)
+          ) {
+            const order = refreshedOrders.get(orderId)!;
+            if (order.remainingAmount0 >= amountFilled) {
+              order.remainingAmount0 -= amountFilled;
+            } else {
+              order.remainingAmount0 = 0n;
+            }
+            if (order.remainingAmount0 === 0n) {
+              refreshedOrders.delete(orderId);
+            }
+          }
+        }
+
+        // Filter out any orders with zero remaining amount (safety check)
+        for (const [orderId, order] of refreshedOrders.entries()) {
+          if (order.remainingAmount0 === 0n) {
+            refreshedOrders.delete(orderId);
+          }
+        }
+
+        setOrders(refreshedOrders);
+        setProcessedEvents(newProcessedEvents);
+        setSyncBlockNumber(latestBlock);
+      } catch (err) {
+        console.error("Error refreshing orders:", err);
+        // Don't update error state, just log - real-time watchers will continue working
+      }
+    };
+
+    // Refresh every 30 seconds
+    const interval = setInterval(refreshOrders, 30000);
+
+    return () => clearInterval(interval);
+  }, [client, marketId, p2pAddress, chainId, enabled, historicalSyncComplete]);
 
   return {
     orders,
