@@ -1,15 +1,15 @@
-// src/app/MyMarketOrders.tsx
+// src/app/MyOrders.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import {
   useAccount,
   usePublicClient,
-  useWriteContract,
+  useWriteContract, // 1. Import write hooks
   useWaitForTransactionReceipt,
   useChainId,
 } from "wagmi";
-import { type Address, formatUnits, BaseError } from "viem";
+import { type Address, type Log, formatUnits, BaseError } from "viem";
 import { useTokenRegistryContext } from "./TokenRegistryContext";
 import { getP2PAddress, getDeploymentBlock } from "./config";
 
@@ -93,7 +93,7 @@ type Order = {
 };
 type OrderMap = Map<bigint, Order>;
 
-export function MyMarketOrders({ marketId }: { marketId: string }) {
+export function MyOrders({ marketId }: { marketId: string }) {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { tokenInfoMap } = useTokenRegistryContext();

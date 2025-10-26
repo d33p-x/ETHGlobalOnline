@@ -16,7 +16,7 @@ import { WrapUnwrapButton } from "@/app/WrapUnwrap";
 // Import your existing components
 import { TradingInterface } from "@/app/TradingInterface";
 import { MarketDataTabs } from "@/app/MarketDataTabs";
-import { MyMarketOrders } from "@/app/MyMarketOrders";
+import { MyOrders } from "@/app/MyOrders";
 import { MyTrades } from "@/app/MyTrades";
 
 type AvailableMarket = {
@@ -40,7 +40,9 @@ export default function MarketPage({
 
   const marketId = params.marketId;
 
-  const [availableMarkets, setAvailableMarkets] = useState<AvailableMarket[]>([]);
+  const [availableMarkets, setAvailableMarkets] = useState<AvailableMarket[]>(
+    []
+  );
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [token0, setToken0] = useState<Address | undefined>();
   const [token1, setToken1] = useState<Address | undefined>();
@@ -144,7 +146,10 @@ export default function MarketPage({
         const decimals1 = marketData[3]; // decimals1 is at index 3
 
         // Format liquidity in token0 (WETH)
-        const liquidityFormatted = (Number(totalLiquidity) / 10 ** decimals0).toLocaleString(undefined, {
+        const liquidityFormatted = (
+          Number(totalLiquidity) /
+          10 ** decimals0
+        ).toLocaleString(undefined, {
           minimumFractionDigits: 4,
           maximumFractionDigits: 4,
         });
@@ -159,7 +164,7 @@ export default function MarketPage({
 
         const orderFilledLogs = await client.getLogs({
           address: p2pAddress,
-          event: p2pAbi.find(e => e.type === "event" && e.name === "OrderFilled"),
+          event: p2pAbi[2], // OrderFilled event
           args: {
             marketId: marketId as `0x${string}`,
           },
@@ -170,10 +175,13 @@ export default function MarketPage({
         // Calculate 24h volume (sum of amount1Spent)
         let volume24h = BigInt(0);
         for (const log of orderFilledLogs) {
-          volume24h += log.args.amount1Spent || BigInt(0);
+          volume24h += log.args?.amount1Spent ?? BigInt(0);
         }
 
-        const volumeFormatted = (Number(volume24h) / 10 ** decimals1).toLocaleString(undefined, {
+        const volumeFormatted = (
+          Number(volume24h) /
+          10 ** decimals1
+        ).toLocaleString(undefined, {
           minimumFractionDigits: 0,
           maximumFractionDigits: 0,
         });
@@ -185,7 +193,8 @@ export default function MarketPage({
 
         let oraclePrice = "0.00";
         try {
-          const pythApiBaseUrl = "https://benchmarks.pyth.network/v1/shims/tradingview";
+          const pythApiBaseUrl =
+            "https://benchmarks.pyth.network/v1/shims/tradingview";
           const now = Math.floor(Date.now() / 1000);
           const oneHourAgo = now - 3600;
 
@@ -193,16 +202,26 @@ export default function MarketPage({
           const quotePythSymbol = `Crypto.${quoteSymbolForPyth}/USD`;
 
           const [baseRes, quoteRes] = await Promise.all([
-            fetch(`${pythApiBaseUrl}/history?symbol=${basePythSymbol}&resolution=60&from=${oneHourAgo}&to=${now}`),
-            fetch(`${pythApiBaseUrl}/history?symbol=${quotePythSymbol}&resolution=60&from=${oneHourAgo}&to=${now}`)
+            fetch(
+              `${pythApiBaseUrl}/history?symbol=${basePythSymbol}&resolution=60&from=${oneHourAgo}&to=${now}`
+            ),
+            fetch(
+              `${pythApiBaseUrl}/history?symbol=${quotePythSymbol}&resolution=60&from=${oneHourAgo}&to=${now}`
+            ),
           ]);
 
           if (baseRes.ok && quoteRes.ok) {
             const baseData = await baseRes.json();
             const quoteData = await quoteRes.json();
 
-            if (baseData.s === "ok" && quoteData.s === "ok" && baseData.c && quoteData.c &&
-                baseData.c.length > 0 && quoteData.c.length > 0) {
+            if (
+              baseData.s === "ok" &&
+              quoteData.s === "ok" &&
+              baseData.c &&
+              quoteData.c &&
+              baseData.c.length > 0 &&
+              quoteData.c.length > 0
+            ) {
               // Get latest close prices
               const basePrice = baseData.c[baseData.c.length - 1];
               const quotePrice = quoteData.c[quoteData.c.length - 1];
@@ -237,7 +256,15 @@ export default function MarketPage({
     // Refresh stats every 30 seconds
     const interval = setInterval(fetchMarketStats, 30000);
     return () => clearInterval(interval);
-  }, [client, p2pAddress, marketId, chainId, token1, chartBaseSymbol, chartQuoteSymbol]);
+  }, [
+    client,
+    p2pAddress,
+    marketId,
+    chainId,
+    token1,
+    chartBaseSymbol,
+    chartQuoteSymbol,
+  ]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -278,11 +305,7 @@ export default function MarketPage({
   }
 
   if (!token0 || !token1 || !symbol0 || !symbol1) {
-    return (
-      <div>
-        Error: Market not found or invalid market ID.
-      </div>
-    );
+    return <div>Error: Market not found or invalid market ID.</div>;
   }
 
   return (
@@ -319,7 +342,14 @@ export default function MarketPage({
             }}
           >
             {/* Market Pair with Dropdown */}
-            <div style={{ position: "relative", display: "flex", alignItems: "center", gap: "0.375rem" }}>
+            <div
+              style={{
+                position: "relative",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.375rem",
+              }}
+            >
               <h1
                 style={{
                   fontSize: "1rem",
@@ -384,10 +414,14 @@ export default function MarketPage({
                         style={{
                           width: "100%",
                           padding: "0.5rem",
-                          background: isCurrentMarket ? "rgba(59, 130, 246, 0.15)" : "transparent",
+                          background: isCurrentMarket
+                            ? "rgba(59, 130, 246, 0.15)"
+                            : "transparent",
                           border: "none",
                           borderRadius: "0.375rem",
-                          color: isCurrentMarket ? "var(--accent-secondary)" : "var(--text-secondary)",
+                          color: isCurrentMarket
+                            ? "var(--accent-secondary)"
+                            : "var(--text-secondary)",
                           fontSize: "0.8125rem",
                           fontWeight: "500",
                           cursor: isCurrentMarket ? "default" : "pointer",
@@ -398,7 +432,8 @@ export default function MarketPage({
                         }}
                         onMouseEnter={(e) => {
                           if (!isCurrentMarket) {
-                            e.currentTarget.style.background = "rgba(59, 130, 246, 0.1)";
+                            e.currentTarget.style.background =
+                              "rgba(59, 130, 246, 0.1)";
                           }
                         }}
                         onMouseLeave={(e) => {
@@ -416,18 +451,39 @@ export default function MarketPage({
             </div>
 
             {/* Divider */}
-            <div style={{ width: "1px", height: "1.5rem", background: "var(--border-color)" }} />
+            <div
+              style={{
+                width: "1px",
+                height: "1.5rem",
+                background: "var(--border-color)",
+              }}
+            />
 
             {/* Price */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.125rem" }}>
-              <span style={{ color: "var(--text-muted)", fontSize: "0.6875rem", fontWeight: "500" }}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.125rem",
+              }}
+            >
+              <span
+                style={{
+                  color: "var(--text-muted)",
+                  fontSize: "0.6875rem",
+                  fontWeight: "500",
+                }}
+              >
                 Price
               </span>
               <div
                 style={{
                   fontSize: "1rem",
                   fontWeight: "700",
-                  color: marketStats.priceChangePercent24h >= 0 ? "var(--success)" : "var(--error)",
+                  color:
+                    marketStats.priceChangePercent24h >= 0
+                      ? "var(--success)"
+                      : "var(--error)",
                   lineHeight: 1,
                 }}
               >
@@ -436,28 +492,66 @@ export default function MarketPage({
             </div>
 
             {/* 24h Volume */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.125rem" }}>
-              <span style={{ color: "var(--text-muted)", fontSize: "0.6875rem", fontWeight: "500" }}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.125rem",
+              }}
+            >
+              <span
+                style={{
+                  color: "var(--text-muted)",
+                  fontSize: "0.6875rem",
+                  fontWeight: "500",
+                }}
+              >
                 24h Volume ({symbol1})
               </span>
-              <span style={{ color: "var(--text-primary)", fontSize: "0.875rem", fontWeight: "600" }}>
+              <span
+                style={{
+                  color: "var(--text-primary)",
+                  fontSize: "0.875rem",
+                  fontWeight: "600",
+                }}
+              >
                 {marketStats.volume24h}
               </span>
             </div>
 
             {/* Liquidity */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.125rem" }}>
-              <span style={{ color: "var(--text-muted)", fontSize: "0.6875rem", fontWeight: "500" }}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.125rem",
+              }}
+            >
+              <span
+                style={{
+                  color: "var(--text-muted)",
+                  fontSize: "0.6875rem",
+                  fontWeight: "500",
+                }}
+              >
                 Liquidity ({symbol0})
               </span>
-              <span style={{ color: "var(--text-primary)", fontSize: "0.875rem", fontWeight: "600" }}>
+              <span
+                style={{
+                  color: "var(--text-primary)",
+                  fontSize: "0.875rem",
+                  fontWeight: "600",
+                }}
+              >
                 {marketStats.liquidity}
               </span>
             </div>
           </div>
 
           {/* Right Side - Actions */}
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <div
+            style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}
+          >
             {isWethMarket && wethAddress && (
               <WrapUnwrapButton wethAddress={wethAddress} />
             )}
@@ -645,7 +739,7 @@ export default function MarketPage({
             >
               My Orders
             </div>
-            <MyMarketOrders marketId={marketId} />
+            <MyOrders marketId={marketId} />
           </div>
 
           {/* My Trades */}

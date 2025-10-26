@@ -1,12 +1,8 @@
 // src/app/my-orders/page.tsx
 "use client";
 
-import { MyOrders } from "@/app/MyOrders";
+import { AllMyOrders } from "@/app/AllMyOrders";
 
 export default function MyOrdersPage() {
-  return (
-    <div>
-      <MyOrders />
-    </div>
-  );
+  return <AllMyOrders />;
 }
