@@ -47,7 +47,7 @@ Tokens are locked in the smart contract when creating orders, but you retain ful
 
 ### 🌐 Multi-Token Support
 
-Trade WETH, USDC, USDT, LINK, cbBTC, cbDOGE, SHIB, AERO, cbXRP, and PEPE.
+Any tokens with a Pyth price feed and which are on the base chain can be traded. This includes tokens like cbBTC (coinbase wrapped BTC)
 
 ---
 
