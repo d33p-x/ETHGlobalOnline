@@ -214,6 +214,22 @@ export function Header() {
             My Orders
           </Link>
         )}
+        <Link
+          href="/docs"
+          style={styles.navLink}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "rgba(0, 245, 255, 0.1)";
+            e.currentTarget.style.borderColor = "rgba(0, 245, 255, 0.3)";
+            e.currentTarget.style.color = "#00f5ff";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.borderColor = "transparent";
+            e.currentTarget.style.color = "#94a3b8";
+          }}
+        >
+          Docs
+        </Link>
       </div>
 
       <div className="site-header-right">

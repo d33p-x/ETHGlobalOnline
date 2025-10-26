@@ -68,7 +68,7 @@ export function FillOrderForm({
     tokenDecimals: token1Decimals,
   });
 
-  // Use shared Pyth price hook (disabled automatic polling, only fetch on-demand)
+  // Use shared Pyth price hook (enabled for background polling)
   const {
     pythUpdateData,
     isLoading: isPythLoading,
@@ -76,7 +76,7 @@ export function FillOrderForm({
     fetchFreshPythData,
   } = usePythPrice({
     priceFeedIds: [tokenInfo0?.priceFeedId, tokenInfo1?.priceFeedId].filter(Boolean) as string[],
-    enabled: false, // Disable auto-polling, we fetch fresh data on-demand before tx
+    enabled: true, // Enable auto-polling to keep data fresh
   });
 
   const {
@@ -260,8 +260,7 @@ export function FillOrderForm({
           !amount1 ||
           !hasLiquidity ||
           isCheckingLiquidity ||
-          isPythLoading ||
-          !pythUpdateData
+          (!needsApproval && isPythLoading)
         }
         style={{
           ...styles.submitButton,
@@ -272,12 +271,12 @@ export function FillOrderForm({
           <span>⏳ Checking liquidity...</span>
         ) : !hasLiquidity ? (
           <span>🚫 No Liquidity Available</span>
-        ) : isPythLoading && !pythUpdateData ? (
-          <span>⏳ Loading price data...</span>
         ) : isApproving ? (
           <span>⏳ Approving...</span>
         ) : needsApproval ? (
           <span>✓ Approve {token1Symbol}</span>
+        ) : isPythLoading ? (
+          <span>⏳ Loading price data...</span>
         ) : isConfirming ? (
           <span>⏳ Filling Order...</span>
         ) : (
