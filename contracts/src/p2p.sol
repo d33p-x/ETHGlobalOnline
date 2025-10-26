@@ -310,8 +310,7 @@ contract P2P is ReentrancyGuard {
             } else {
                 amount0ToFillLoop = order.amount0;
             }
-            // Calculate how much token1 seller receives (with 0.05% bonus)
-            // amount1 = (amount0 * price0Seller) / price1 (adjusted for decimals)
+
             uint256 amount1CostLoop = (amount0ToFillLoop *
                 price0Seller *
                 dec1Factor) / (price1 * dec0Factor);

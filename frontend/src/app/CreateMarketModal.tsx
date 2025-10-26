@@ -228,13 +228,31 @@ export function CreateMarketModal({ isOpen, onClose, existingMarkets }: CreateMa
                 style={{
                   flex: 1,
                   padding: "0.75rem",
-                  borderRadius: "0.5rem",
+                  borderRadius: "0.75rem",
                   border: "none",
-                  background: !token0 || !token1 || marketExists ? "var(--bg-tertiary)" : "var(--accent-primary)",
+                  background: !token0 || !token1 || marketExists
+                    ? "var(--bg-tertiary)"
+                    : "linear-gradient(135deg, #00d4e5 0%, #5094e0 100%)",
                   color: !token0 || !token1 || marketExists ? "var(--text-muted)" : "white",
                   fontSize: "1rem",
                   cursor: !token0 || !token1 || marketExists ? "not-allowed" : "pointer",
                   fontWeight: "600",
+                  boxShadow: !token0 || !token1 || marketExists ? "none" : "0 4px 12px rgba(0, 245, 255, 0.3)",
+                  transition: "all 0.3s ease",
+                }}
+                onMouseEnter={(e) => {
+                  if (token0 && token1 && !marketExists && status !== "pending") {
+                    e.currentTarget.style.background = "linear-gradient(135deg, #00f5ff 0%, #60a5fa 100%)";
+                    e.currentTarget.style.transform = "translateY(-1px)";
+                    e.currentTarget.style.boxShadow = "0 6px 16px rgba(0, 245, 255, 0.4)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (token0 && token1 && !marketExists) {
+                    e.currentTarget.style.background = "linear-gradient(135deg, #00d4e5 0%, #5094e0 100%)";
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 245, 255, 0.3)";
+                  }
                 }}
               >
                 {status === "pending" ? "Confirming..." : "Create Market"}

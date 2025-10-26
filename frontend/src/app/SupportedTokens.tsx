@@ -76,6 +76,7 @@ function TokenRow({
           disabled={isPending || isConfirming || !userAddress}
           style={{
             ...tokenRowStyles.mintButton,
+            ...(isSuccess ? tokenRowStyles.mintButtonSuccess : {}),
             opacity: isPending || isConfirming || !userAddress ? 0.6 : 1,
             cursor:
               userAddress && !isPending && !isConfirming
@@ -83,15 +84,22 @@ function TokenRow({
                 : "not-allowed",
           }}
           onMouseEnter={(e) => {
-            if (userAddress && !isPending && !isConfirming) {
+            if (userAddress && !isPending && !isConfirming && !isSuccess) {
+              e.currentTarget.style.background =
+                "linear-gradient(135deg, #00f5ff 0%, #60a5fa 100%)";
               e.currentTarget.style.transform = "translateY(-1px)";
               e.currentTarget.style.boxShadow =
-                "0 4px 12px rgba(59, 130, 246, 0.4)";
+                "0 6px 16px rgba(0, 245, 255, 0.4)";
             }
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "translateY(0)";
-            e.currentTarget.style.boxShadow = "none";
+            if (!isSuccess) {
+              e.currentTarget.style.background =
+                "linear-gradient(135deg, #00d4e5 0%, #5094e0 100%)";
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow =
+                "0 2px 8px rgba(0, 245, 255, 0.2)";
+            }
           }}
         >
           {isPending
@@ -145,15 +153,20 @@ const tokenRowStyles = {
     fontFamily: "monospace",
   },
   mintButton: {
-    padding: "0.375rem 0.875rem",
+    padding: "0.5rem 1rem",
     fontSize: "0.8125rem",
     fontWeight: "600",
-    background: "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)",
+    background: "linear-gradient(135deg, #00d4e5 0%, #5094e0 100%)",
     color: "white",
     border: "none",
-    borderRadius: "0.375rem",
-    transition: "all 0.2s ease",
-    minWidth: "100px",
+    borderRadius: "0.5rem",
+    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+    minWidth: "120px",
+    boxShadow: "0 2px 8px rgba(0, 245, 255, 0.2)",
+  },
+  mintButtonSuccess: {
+    background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+    boxShadow: "0 2px 8px rgba(16, 185, 129, 0.3)",
   },
 };
 

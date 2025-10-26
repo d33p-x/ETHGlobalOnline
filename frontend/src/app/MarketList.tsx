@@ -349,17 +349,17 @@ export function MarketList() {
             onClick={() => setIsModalOpen(true)}
             style={styles.createButton}
             onMouseEnter={(e) => {
+              e.currentTarget.style.background = "linear-gradient(135deg, #00f5ff 0%, #60a5fa 100%)";
               e.currentTarget.style.transform = "translateY(-2px)";
-              e.currentTarget.style.boxShadow =
-                "0 8px 16px rgba(59, 130, 246, 0.4)";
+              e.currentTarget.style.boxShadow = "0 8px 20px rgba(0, 245, 255, 0.4)";
             }}
             onMouseLeave={(e) => {
+              e.currentTarget.style.background = "linear-gradient(135deg, #00d4e5 0%, #5094e0 100%)";
               e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow =
-                "0 4px 12px rgba(59, 130, 246, 0.3)";
+              e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 245, 255, 0.3)";
             }}
           >
-            + Create Market
+            Create Market
           </button>
         </div>
 
@@ -567,15 +567,16 @@ const styles = {
   },
   createButton: {
     padding: "0.75rem 1.5rem",
-    background: "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)",
+    background: "linear-gradient(135deg, #00d4e5 0%, #5094e0 100%)",
     color: "white",
     border: "none",
-    borderRadius: "0.5rem",
+    borderRadius: "0.75rem",
     fontSize: "0.9375rem",
     fontWeight: "600",
     cursor: "pointer",
     transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-    boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)",
+    boxShadow: "0 4px 12px rgba(0, 245, 255, 0.3)",
+    backdropFilter: "blur(10px)",
   },
   emptyState: {
     textAlign: "center" as const,
